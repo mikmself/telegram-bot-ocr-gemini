@@ -19,22 +19,121 @@
   ],
   "author": "SmartGov Team",
   "license": "MIT",
+  "_comment": "SmartGov Gemini Bot - AI-Powered OCR untuk Kartu Keluarga Indonesia",
+  "_purpose": "Bot Telegram yang menggunakan Google Gemini AI untuk mengekstraksi data Kartu Keluarga (KK) Indonesia secara otomatis",
+  "_target_users": "Aparatur desa dan petugas kependudukan yang membutuhkan digitalisasi data KK",
+  "_tech_stack": "Node.js, Telegram Bot API, Google Gemini AI, MySQL, Winston Logging",
+  "_features": [
+    "OCR dengan Google Gemini AI untuk ekstraksi data KK",
+    "Session management dengan authentication yang aman",
+    "Region API integration untuk validasi kode wilayah",
+    "Database MySQL untuk auto-save data ke SmartGov",
+    "Error handling yang robust dan comprehensive",
+    "Rate limiting untuk prevent abuse",
+    "Image optimization untuk processing yang optimal"
+  ],
+  "_architecture": {
+    "entry_point": "src/index.js - Main application entry point",
+    "bot_commands": "src/bot/commands/ - Command handlers untuk user interaction",
+    "bot_handlers": "src/bot/handlers/ - Message handlers untuk photo processing",
+    "services": "src/services/ - Business logic dan external API integration",
+    "database": "src/database/ - Database models dan operations",
+    "config": "src/config/ - Configuration management dan environment setup",
+    "utils": "src/utils/ - Utility functions dan helper modules"
+  },
+  "_deployment": {
+    "production": "npm start - Production mode dengan error handling",
+    "development": "npm run dev - Development mode dengan auto-restart",
+    "docker": "Docker support dengan docker-compose.yml",
+    "environment": "Environment variables untuk configuration"
+  },
+  "_monitoring": {
+    "logging": "Winston logger dengan multiple levels dan file rotation",
+    "error_tracking": "Comprehensive error logging dan stack trace capture",
+    "performance": "Processing time tracking dan memory monitoring",
+    "security": "Input validation, rate limiting, dan secure credential handling"
+  },
   "dependencies": {
-    "@google/generative-ai": "^0.21.0",
-    "node-telegram-bot-api": "^0.64.0",
-    "mysql2": "^3.6.5",
-    "dotenv": "^16.3.1",
-    "axios": "^1.6.2",
-    "sharp": "^0.33.1",
-    "bcryptjs": "^2.4.3",
-    "moment": "^2.29.4",
-    "moment-timezone": "^0.5.43",
-    "winston": "^3.11.0"
+    "@google/generative-ai": {
+      "version": "^0.21.0",
+      "description": "Google Gemini AI SDK untuk OCR processing",
+      "usage": "OCR engine utama untuk mengekstraksi data dari foto KK",
+      "features": ["Image analysis", "Text extraction", "Structured data parsing"]
+    },
+    "node-telegram-bot-api": {
+      "version": "^0.64.0",
+      "description": "Telegram Bot API wrapper untuk Node.js",
+      "usage": "Platform utama untuk bot interaction dan message handling",
+      "features": ["Message handling", "Command processing", "File upload/download"]
+    },
+    "mysql2": {
+      "version": "^3.6.5",
+      "description": "MySQL database driver untuk Node.js",
+      "usage": "Database operations untuk menyimpan data KK dan user sessions",
+      "features": ["Connection pooling", "Prepared statements", "Promise support"]
+    },
+    "dotenv": {
+      "version": "^16.3.1",
+      "description": "Environment variables loader",
+      "usage": "Load configuration dari .env file",
+      "features": ["Environment management", "Configuration loading", "Security"]
+    },
+    "axios": {
+      "version": "^1.6.2",
+      "description": "HTTP client untuk API calls",
+      "usage": "Region API integration dan external service calls",
+      "features": ["Promise-based", "Request/response interceptors", "Error handling"]
+    },
+    "sharp": {
+      "version": "^0.33.1",
+      "description": "Image processing library",
+      "usage": "Image optimization dan format conversion untuk OCR",
+      "features": ["Image resizing", "Format conversion", "Quality optimization"]
+    },
+    "bcryptjs": {
+      "version": "^2.4.3",
+      "description": "Password hashing library",
+      "usage": "Password hashing untuk authentication",
+      "features": ["Secure hashing", "Salt generation", "Password verification"]
+    },
+    "moment": {
+      "version": "^2.29.4",
+      "description": "Date manipulation library",
+      "usage": "Date parsing dan manipulation untuk birth dates",
+      "features": ["Date parsing", "Format conversion", "Date calculations"]
+    },
+    "moment-timezone": {
+      "version": "^0.5.43",
+      "description": "Timezone support untuk moment.js",
+      "usage": "Timezone handling untuk date operations",
+      "features": ["Timezone conversion", "Local time handling", "UTC support"]
+    },
+    "winston": {
+      "version": "^3.11.0",
+      "description": "Logging library",
+      "usage": "Application logging dan error tracking",
+      "features": ["Multiple transports", "Log levels", "File rotation"]
+    }
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "nodemon": {
+      "version": "^3.0.2",
+      "description": "Auto-restart development server",
+      "usage": "Development mode dengan auto-restart saat file changes",
+      "features": ["File watching", "Auto-restart", "Development workflow"]
+    }
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.0.0",
+    "description": "Minimum Node.js version requirement",
+    "reason": "Menggunakan modern JavaScript features dan async/await syntax"
+  },
+  "_dependency_notes": {
+    "core_dependencies": ["@google/generative-ai", "node-telegram-bot-api", "mysql2"],
+    "utility_dependencies": ["dotenv", "axios", "sharp", "moment", "winston"],
+    "security_dependencies": ["bcryptjs"],
+    "development_dependencies": ["nodemon"],
+    "version_strategy": "Semantic versioning dengan caret (^) untuk minor updates",
+    "security_considerations": "Regular updates untuk security patches dan bug fixes"
   }
 }

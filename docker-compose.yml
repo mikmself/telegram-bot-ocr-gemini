@@ -1,40 +1,105 @@
+# ============================================================================
+# SmartGov Gemini Bot - Docker Compose Configuration
+# ============================================================================
+#
+# Docker Compose configuration untuk SmartGov Gemini Bot
+# Menggunakan Docker Compose v3.8 untuk compatibility
+#
+# SERVICES:
+# - smartgov-bot: Main bot application container
+#
+# FEATURES:
+# - Multi-stage build dengan Dockerfile
+# - Host network mode untuk database access
+# - Volume mounting untuk logs dan temp files
+# - Health check monitoring
+# - Log rotation configuration
+# - Production environment setup
+#
+# USAGE:
+# docker-compose up -d
+# docker-compose down
+# docker-compose logs -f smartgov-bot
+#
+# ============================================================================
+
 version: '3.8'
 
 services:
+  # ==========================================================================
+  # SMARTGOV BOT SERVICE
+  # ==========================================================================
+  
   smartgov-bot:
+    # Build configuration
     build:
       context: .
       dockerfile: Dockerfile
+    
+    # Container naming
     container_name: smartgov-gemini-bot
+    
+    # Restart policy - always restart jika container stop
     restart: always
 
-    # Use host network to access MySQL on 127.0.0.1:3320
+    # ========================================================================
+    # NETWORK CONFIGURATION
+    # ========================================================================
+    
+    # Use host network untuk access MySQL database
+    # Bot perlu access ke database yang running di host machine
     network_mode: "host"
 
-    # Environment variables
+    # ========================================================================
+    # ENVIRONMENT CONFIGURATION
+    # ========================================================================
+    
+    # Load environment variables dari .env file
     env_file:
       - .env
 
+    # Additional environment variables
     environment:
       - NODE_ENV=production
       - TZ=Asia/Jakarta
 
-    # Volumes for logs and temp files
+    # ========================================================================
+    # VOLUME MOUNTING
+    # ========================================================================
+    
+    # Mount volumes untuk persistent data
     volumes:
+      # Logs directory - untuk persistent logging
       - ./logs:/app/logs
+      # Temp directory - untuk temporary file processing
       - ./temp:/app/temp
 
-    # Logging configuration
+    # ========================================================================
+    # LOGGING CONFIGURATION
+    # ========================================================================
+    
+    # Configure logging driver dan rotation
     logging:
       driver: "json-file"
       options:
+        # Maximum log file size sebelum rotation
         max-size: "10m"
+        # Maximum number of log files to keep
         max-file: "3"
 
-    # Health check
+    # ========================================================================
+    # HEALTH CHECK
+    # ========================================================================
+    
+    # Health check untuk monitoring container health
     healthcheck:
+      # Test command - cek apakah Node.js process masih running
       test: ["CMD", "pgrep", "-f", "node.*index.js"]
+      # Check interval - setiap 30 detik
       interval: 30s
+      # Timeout untuk health check command
       timeout: 10s
+      # Number of retries sebelum marking unhealthy
       retries: 3
+      # Start period - waktu tunggu sebelum health check dimulai
       start_period: 40s

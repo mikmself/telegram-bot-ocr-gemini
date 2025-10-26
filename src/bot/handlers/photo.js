@@ -1,3 +1,76 @@
+/**
+ * ============================================================================
+ * FILE: src/bot/handlers/photo.js
+ * ============================================================================
+ *
+ * DESKRIPSI:
+ * Handler utama untuk memproses foto Kartu Keluarga (KK) yang di-upload user
+ * melalui Telegram bot. File ini mengintegrasikan seluruh pipeline OCR dari
+ * download foto hingga penyimpanan data ke database dengan validasi lengkap.
+ *
+ * TANGGAL DIBUAT: 2024
+ * TANGGAL MODIFIKASI TERAKHIR: 2025-10-26
+ *
+ * DEPENDENSI:
+ * - fs.promises: File system operations untuk download dan cleanup
+ * - path: Path manipulation untuk file handling
+ * - logger: Logging utility untuk tracking dan debugging
+ * - AuthService: Session management dan user authentication
+ * - GeminiOcrService: AI-powered OCR processing
+ * - AutoCreateService: Automatic data creation dan database insertion
+ * - textCleaner: Text normalization utilities
+ * - config: Environment configuration
+ *
+ * FITUR UTAMA:
+ * 1. Authentication & Authorization
+ *    - Validasi user login status
+ *    - Cek village code requirement
+ *    - Rate limiting (10 foto per jam per user)
+ *
+ * 2. Photo Processing Pipeline
+ *    - Download foto dari Telegram server
+ *    - Temporary file management
+ *    - OCR processing dengan Google Gemini AI
+ *    - Data validation dan cleaning
+ *
+ * 3. Database Operations
+ *    - Automatic family data creation
+ *    - Resident data insertion
+ *    - Duplicate detection dan handling
+ *    - Transaction management
+ *
+ * 4. User Experience
+ *    - Real-time status updates
+ *    - Detailed progress messages
+ *    - Comprehensive error handling
+ *    - Success/failure feedback
+ *
+ * 5. Security & Performance
+ *    - Rate limiting untuk prevent abuse
+ *    - File cleanup otomatis
+ *    - Error logging untuk monitoring
+ *    - Memory management
+ *
+ * CARA PENGGUNAAN:
+ * ```javascript
+ * // Handler dipanggil otomatis oleh bot saat user upload foto
+ * const photoHandler = require('./handlers/photo');
+ * 
+ * // Bot akan memanggil handler ini saat ada photo message
+ * bot.on('photo', photoHandler);
+ * ```
+ *
+ * CATATAN PENTING:
+ * - User harus login dan set village code sebelum upload foto
+ * - Rate limit: 10 foto per jam per chat ID
+ * - File temporary akan di-cleanup otomatis
+ * - OCR processing membutuhkan 5-15 detik
+ * - Data akan disimpan ke database jika valid
+ * - Duplicate NIK akan di-skip dengan notifikasi
+ *
+ * ============================================================================
+ */
+
 const fs = require('fs').promises;
 const path = require('path');
 const logger = require('../../utils/logger');
@@ -8,11 +81,51 @@ const { normalizeNIK } = require('../../utils/textCleaner');
 const config = require('../../config/env');
 
 
+// ============================================================================
+// RATE LIMITING CONFIGURATION
+// ============================================================================
+
+/**
+ * Map untuk tracking upload foto per user (chat ID)
+ * Key: chatId (number) - Telegram chat ID
+ * Value: Array<number> - Array timestamp upload dalam 1 jam terakhir
+ */
 const photoUploadTracker = new Map();
+
+/**
+ * Window waktu untuk rate limiting (1 jam dalam milliseconds)
+ * @constant {number}
+ */
 const RATE_LIMIT_WINDOW = 60 * 60 * 1000;
+
+/**
+ * Maksimal foto yang diizinkan per jam per user
+ * @constant {number}
+ */
 const MAX_PHOTOS_PER_HOUR = 10;
 
+// ============================================================================
+// RATE LIMITING UTILITIES
+// ============================================================================
 
+/**
+ * Membersihkan data rate limiting yang sudah expired
+ * 
+ * Fungsi ini dijalankan setiap 10 menit untuk membersihkan
+ * timestamp upload yang sudah tidak valid (lebih dari 1 jam).
+ * 
+ * Flow:
+ * 1. Iterate semua chat ID di tracker
+ * 2. Filter timestamp yang masih valid (dalam 1 jam terakhir)
+ * 3. Hapus entry jika tidak ada timestamp valid
+ * 4. Update entry dengan timestamp yang tersisa
+ * 
+ * Performance:
+ * - O(n) complexity dimana n = jumlah unique chat IDs
+ * - Dijalankan setiap 10 menit untuk balance antara memory dan CPU
+ * 
+ * @function cleanupRateLimitTracker
+ */
 function cleanupRateLimitTracker() {
   const now = Date.now();
   for (const [chatId, timestamps] of photoUploadTracker.entries()) {
@@ -25,9 +138,79 @@ function cleanupRateLimitTracker() {
   }
 }
 
-
+/**
+ * Setup periodic cleanup untuk rate limiting tracker
+ * 
+ * Interval: 10 menit (600,000ms)
+ * Tujuan: Mencegah memory leak dari accumulated timestamps
+ * 
+ * @constant {number} 600000 - 10 menit dalam milliseconds
+ */
 setInterval(cleanupRateLimitTracker, 10 * 60 * 1000);
 
+// ============================================================================
+// MAIN PHOTO HANDLER
+// ============================================================================
+
+/**
+ * Handler utama untuk memproses foto Kartu Keluarga (KK)
+ * 
+ * Handler ini dipanggil otomatis oleh Telegram bot saat user mengirim foto.
+ * Melakukan validasi lengkap, processing OCR, dan penyimpanan data ke database.
+ * 
+ * PROCESSING PIPELINE:
+ * 1. Authentication & Authorization Check
+ *    - Validasi user login status
+ *    - Cek village code requirement
+ *    - Rate limiting validation
+ * 
+ * 2. Photo Download & Preparation
+ *    - Download foto dari Telegram server
+ *    - Simpan ke temporary directory
+ *    - Validasi file format dan size
+ * 
+ * 3. OCR Processing
+ *    - Kirim foto ke Google Gemini AI
+ *    - Extract data dari Kartu Keluarga
+ *    - Validasi hasil OCR
+ * 
+ * 4. Database Operations
+ *    - Create/update family data
+ *    - Insert resident records
+ *    - Handle duplicates dan validation errors
+ * 
+ * 5. User Feedback
+ *    - Real-time status updates
+ *    - Detailed success/error messages
+ *    - Cleanup temporary files
+ * 
+ * ERROR HANDLING:
+ * - Authentication errors: Redirect ke login
+ * - Rate limit exceeded: Informasi batas upload
+ * - OCR failures: Retry dengan error message
+ * - Database errors: Rollback dengan notifikasi
+ * - System errors: Generic error message
+ * 
+ * @async
+ * @param {Object} bot - Telegram bot instance
+ * @param {Object} msg - Telegram message object
+ * @param {number} msg.chat.id - Chat ID (user identifier)
+ * @param {number} msg.message_id - Message ID untuk reply
+ * @param {Array} msg.photo - Array foto dengan berbagai ukuran
+ * 
+ * @returns {Promise<void>} Tidak return value, hanya side effects
+ * 
+ * @example
+ * // Handler dipanggil otomatis oleh bot
+ * bot.on('photo', photoHandler);
+ * 
+ * // User upload foto KK -> handler dipanggil
+ * // 1. Cek login status
+ * // 2. Download foto
+ * // 3. Process OCR
+ * // 4. Save to database
+ * // 5. Send result to user
+ */
 module.exports = async (bot, msg) => {
   const chatId = msg.chat.id;
   const messageId = msg.message_id;
@@ -35,6 +218,14 @@ module.exports = async (bot, msg) => {
   logger.info(`Photo received from chat ${chatId}`);
 
   try {
+    // ========================================================================
+    // STEP 1: AUTHENTICATION & AUTHORIZATION CHECK
+    // ========================================================================
+    
+    /**
+     * Validasi user login status
+     * User harus sudah login sebelum bisa upload foto
+     */
     const isLoggedIn = AuthService.isLoggedIn(chatId);
 
     if (!isLoggedIn) {
@@ -49,6 +240,10 @@ module.exports = async (bot, msg) => {
       return;
     }
 
+    /**
+     * Ambil informasi user dari session
+     * Digunakan untuk tracking dan audit trail
+     */
     const userInfo = AuthService.getUserInfo(chatId);
 
     if (!userInfo) {
@@ -56,6 +251,10 @@ module.exports = async (bot, msg) => {
       return;
     }
 
+    /**
+     * Validasi village code requirement
+     * Village code diperlukan untuk menentukan lokasi penyimpanan data
+     */
     if (!AuthService.hasVillageCode(chatId)) {
       await bot.sendMessage(chatId,
         'Kode wilayah belum diatur dalam sistem.\n\n' +
@@ -67,7 +266,14 @@ module.exports = async (bot, msg) => {
       return;
     }
 
-
+    // ========================================================================
+    // STEP 2: RATE LIMITING VALIDATION
+    // ========================================================================
+    
+    /**
+     * Implementasi rate limiting untuk mencegah abuse
+     * Maksimal 10 foto per jam per user (chat ID)
+     */
     const now = Date.now();
     const userUploads = photoUploadTracker.get(chatId) || [];
     const recentUploads = userUploads.filter(ts => now - ts < RATE_LIMIT_WINDOW);
@@ -87,10 +293,21 @@ module.exports = async (bot, msg) => {
       return;
     }
 
-
+    /**
+     * Update rate limiting tracker
+     * Tambahkan timestamp upload saat ini ke tracking
+     */
     recentUploads.push(now);
     photoUploadTracker.set(chatId, recentUploads);
 
+    // ========================================================================
+    // STEP 3: PHOTO DOWNLOAD & PREPARATION
+    // ========================================================================
+    
+    /**
+     * Kirim status message awal ke user
+     * Memberikan feedback bahwa foto telah diterima
+     */
     const statusMsg = await bot.sendMessage(
       chatId,
       'Foto Kartu Keluarga (KK) telah diterima oleh sistem.\n\n' +
@@ -98,11 +315,19 @@ module.exports = async (bot, msg) => {
       { reply_to_message_id: messageId }
     );
 
+    /**
+     * Ambil foto dengan resolusi tertinggi
+     * Telegram mengirim array foto dengan berbagai ukuran
+     * Index terakhir adalah yang terbesar
+     */
     const photo = msg.photo[msg.photo.length - 1];
     const fileId = photo.file_id;
 
     logger.info(`Processing photo file_id: ${fileId}`);
 
+    /**
+     * Update status message untuk download progress
+     */
     await bot.editMessageText(
       'Foto Kartu Keluarga (KK) telah diterima oleh sistem.\n\n' +
       'Sedang mengunduh gambar dari server Telegram...',
@@ -112,6 +337,12 @@ module.exports = async (bot, msg) => {
       }
     );
 
+    /**
+     * Download foto dari Telegram server
+     * 1. Get file info dari Telegram API
+     * 2. Build file URL
+     * 3. Download ke temporary directory
+     */
     const file = await bot.getFile(fileId);
     const filePath = file.file_path;
     const fileUrl = `https://api.telegram.org/file/bot${config.telegram.token}/${filePath}`;
@@ -125,6 +356,13 @@ module.exports = async (bot, msg) => {
     const fileStream = await bot.downloadFile(fileId, tempDir);
     logger.info(`Photo downloaded to: ${localFilePath}`);
 
+    // ========================================================================
+    // STEP 4: OCR PROCESSING
+    // ========================================================================
+    
+    /**
+     * Update status message untuk OCR processing
+     */
     await bot.editMessageText(
       'Foto Kartu Keluarga (KK) telah diterima oleh sistem.\n\n' +
       'Sedang memproses dengan teknologi Google Gemini AI...\n' +
@@ -135,6 +373,10 @@ module.exports = async (bot, msg) => {
       }
     );
 
+    /**
+     * Proses OCR menggunakan Google Gemini AI
+     * Extract data dari foto Kartu Keluarga
+     */
     const ocrResult = await GeminiOcrService.processImage(fileStream);
 
     if (!ocrResult.success) {
@@ -168,6 +410,10 @@ module.exports = async (bot, msg) => {
 
     logger.info('OCR processing completed successfully');
 
+    /**
+     * Validasi hasil OCR
+     * Pastikan data yang diekstrak valid dan lengkap
+     */
     const validation = GeminiOcrService.validateOcrResult(ocrResult);
 
     if (!validation.valid) {
@@ -200,8 +446,19 @@ module.exports = async (bot, msg) => {
       return;
     }
 
+    // ========================================================================
+    // STEP 5: DATA EXTRACTION & PREVIEW
+    // ========================================================================
+    
+    /**
+     * Ambil data yang telah diekstrak dari OCR
+     */
     const data = ocrResult.parsedData;
 
+    /**
+     * Buat preview message untuk user
+     * Menampilkan data yang berhasil diekstrak sebelum disimpan
+     */
     let extractedMessage = 'Data berhasil diekstrak dari Kartu Keluarga (KK).\n\n';
     extractedMessage += `Informasi Kartu Keluarga:\n`;
     extractedMessage += `Nomor KK: \`${data.nomor_kk}\`\n`;
@@ -247,8 +504,28 @@ module.exports = async (bot, msg) => {
       parse_mode: 'Markdown'
     });
 
+    // ========================================================================
+    // STEP 6: DATABASE OPERATIONS
+    // ========================================================================
+    
+    /**
+     * Simpan data ke database menggunakan AutoCreateService
+     * Service ini akan:
+     * 1. Create/update family data
+     * 2. Insert resident records
+     * 3. Handle duplicates dan validation
+     * 4. Update member counts
+     */
     const createResult = await AutoCreateService.autoCreate(data, userInfo.userId);
 
+    // ========================================================================
+    // STEP 7: CLEANUP & RESULT HANDLING
+    // ========================================================================
+    
+    /**
+     * Cleanup temporary file
+     * Hapus file foto yang sudah tidak diperlukan
+     */
     try {
       await fs.unlink(fileStream);
       logger.info(`Cleaned up temp file after processing: ${fileStream}`);
@@ -256,6 +533,10 @@ module.exports = async (bot, msg) => {
       logger.warn(`Failed to cleanup temp file ${fileStream}:`, cleanupError.message);
     }
 
+    /**
+     * Handle database operation results
+     * Tampilkan hasil sesuai dengan status operasi
+     */
     if (createResult.success) {
       logger.info('Auto-create successful:', createResult.data);
 
@@ -380,6 +661,14 @@ module.exports = async (bot, msg) => {
     }
 
   } catch (error) {
+    // ========================================================================
+    // ERROR HANDLING
+    // ========================================================================
+    
+    /**
+     * Global error handler untuk semua error yang tidak ter-handle
+     * Log error dan berikan feedback ke user
+     */
     logger.error('Error in photo handler:', error);
 
     await bot.sendMessage(
@@ -395,3 +684,95 @@ module.exports = async (bot, msg) => {
     );
   }
 };
+
+/**
+ * ============================================================================
+ * DEVELOPER NOTES & BEST PRACTICES
+ * ============================================================================
+ *
+ * PHOTO PROCESSING PIPELINE:
+ * ---------------------------
+ * 1. Authentication Check
+ *    - Validasi user login status
+ *    - Cek village code requirement
+ *    - Rate limiting validation
+ *
+ * 2. Photo Download
+ *    - Ambil foto dengan resolusi tertinggi
+ *    - Download ke temporary directory
+ *    - Generate unique filename
+ *
+ * 3. OCR Processing
+ *    - Kirim ke Google Gemini AI
+ *    - Extract data dari Kartu Keluarga
+ *    - Validasi hasil OCR
+ *
+ * 4. Database Operations
+ *    - Create/update family data
+ *    - Insert resident records
+ *    - Handle duplicates
+ *
+ * 5. User Feedback
+ *    - Real-time status updates
+ *    - Detailed success/error messages
+ *    - Cleanup temporary files
+ *
+ * RATE LIMITING STRATEGY:
+ * -----------------------
+ * - 10 foto per jam per user (chat ID)
+ * - Sliding window dengan cleanup setiap 10 menit
+ * - Memory-efficient dengan Map storage
+ * - Graceful degradation saat limit exceeded
+ *
+ * ERROR HANDLING PATTERNS:
+ * ------------------------
+ * 1. Authentication Errors: Redirect ke login
+ * 2. Rate Limit Exceeded: Informasi batas upload
+ * 3. OCR Failures: Retry dengan error message
+ * 4. Validation Errors: Detail error dengan saran
+ * 5. Database Errors: Rollback dengan notifikasi
+ * 6. System Errors: Generic error message
+ *
+ * SECURITY CONSIDERATIONS:
+ * ------------------------
+ * - Rate limiting untuk prevent abuse
+ * - File cleanup untuk prevent storage issues
+ * - Input validation untuk prevent injection
+ * - Error logging untuk monitoring
+ * - Session validation untuk authorization
+ *
+ * PERFORMANCE OPTIMIZATIONS:
+ * --------------------------
+ * - Use highest resolution photo (index terakhir)
+ * - Temporary file cleanup otomatis
+ * - Async/await untuk non-blocking operations
+ * - Efficient rate limiting dengan Map
+ * - Batch database operations
+ *
+ * MONITORING & LOGGING:
+ * ---------------------
+ * - Log semua upload attempts
+ * - Track OCR success/failure rates
+ * - Monitor rate limiting hits
+ * - Log database operation results
+ * - Error tracking untuk debugging
+ *
+ * TESTING RECOMMENDATIONS:
+ * ------------------------
+ * [ ] Test dengan berbagai ukuran foto
+ * [ ] Test rate limiting functionality
+ * [ ] Test OCR dengan foto berkualitas rendah
+ * [ ] Test database error scenarios
+ * [ ] Test cleanup functionality
+ * [ ] Test authentication edge cases
+ *
+ * RELATED FILES:
+ * --------------
+ * - src/services/GeminiOcrService.js: OCR processing
+ * - src/services/AutoCreateService.js: Database operations
+ * - src/services/AuthService.js: Authentication
+ * - src/utils/textCleaner.js: Text normalization
+ * - src/config/env.js: Configuration
+ *
+ * ============================================================================
+ */

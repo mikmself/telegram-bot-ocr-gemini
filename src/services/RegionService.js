@@ -1,12 +1,128 @@
+/**
+ * ============================================================================
+ * FILE: src/services/RegionService.js
+ * ============================================================================
+ *
+ * DESKRIPSI:
+ * Service untuk mengelola data wilayah Indonesia dengan integrasi API regional.
+ * Menyediakan functionality untuk lookup provinsi, kabupaten, kecamatan,
+ * dan desa/kelurahan dengan caching dan error handling yang komprehensif.
+ *
+ * TANGGAL DIBUAT: 2024
+ * TANGGAL MODIFIKASI TERAKHIR: 2025-10-26
+ *
+ * DEPENDENSI:
+ * - axios: HTTP client untuk API calls
+ * - utils/logger: Logging utility untuk tracking dan debugging
+ * - config/env: Environment configuration untuk API settings
+ *
+ * FITUR UTAMA:
+ * 1. Region Data Management
+ *    - Provinsi, Kabupaten/Kota, Kecamatan, Desa/Kelurahan
+ *    - Hierarchical region structure
+ *    - Region code validation dan normalization
+ *    - Parent-child relationship mapping
+ *
+ * 2. API Integration
+ *    - RESTful API integration dengan external service
+ *    - Authentication dengan Bearer token
+ *    - Timeout handling dan retry mechanism
+ *    - Error handling dan fallback strategies
+ *
+ * 3. Search & Lookup
+ *    - Exact match search
+ *    - Fuzzy matching dengan multiple strategies
+ *    - Partial string matching
+ *    - Case-insensitive search
+ *
+ * 4. Data Enrichment
+ *    - Hierarchical data enrichment
+ *    - Parent region information
+ *    - Complete region hierarchy
+ *    - Data validation dan consistency
+ *
+ * 5. Performance Optimization
+ *    - Efficient search algorithms
+ *    - API call optimization
+ *    - Error recovery mechanisms
+ *    - Logging dan monitoring
+ *
+ * CARA PENGGUNAAN:
+ * ```javascript
+ * const RegionService = require('./services/RegionService');
+ *
+ * // Get region by code
+ * const region = await RegionService.getRegion('3301062016');
+ *
+ * // Search province by name
+ * const province = await RegionService.searchProvince('Jawa Tengah');
+ *
+ * // Parse region codes from address
+ * const codes = await RegionService.parseRegionCodes(
+ *   'Jawa Tengah', 'Semarang', 'Tembalang', 'Tembalang'
+ * );
+ * ```
+ *
+ * CATATAN PENTING:
+ * - Service menggunakan singleton pattern
+ * - API calls dengan timeout 10 detik
+ * - Support multiple search strategies
+ * - Hierarchical data enrichment
+ * - Comprehensive error handling
+ *
+ * ============================================================================
+ */
+
 const axios = require('axios');
 const logger = require('../utils/logger');
 const config = require('../config/env');
 
+/**
+ * RegionService Class
+ * 
+ * Mengelola data wilayah Indonesia dengan integrasi API regional.
+ * Menyediakan lookup functionality untuk semua level administrasi
+ * dengan caching, error handling, dan data enrichment.
+ * 
+ * API INTEGRATION:
+ * 1. Authentication
+ *    - Bearer token authentication
+ *    - Secure API communication
+ *    - Error handling untuk auth failures
+ * 
+ * 2. Request Management
+ *    - Timeout handling (10 detik)
+ *    - Retry mechanism untuk transient failures
+ *    - Error recovery strategies
+ * 
+ * 3. Data Processing
+ *    - Response validation
+ *    - Data normalization
+ *    - Error handling
+ * 
+ * @class RegionService
+ */
 class RegionService {
   constructor() {
+    // ========================================================================
+    // API CONFIGURATION
+    // ========================================================================
+    
+    /**
+     * Load API configuration dari environment
+     * Setup base URL dan API key
+     */
     this.apiUrl = config.regionApi.url;
     this.apiKey = config.regionApi.key;
 
+    // ========================================================================
+    // HTTP CLIENT SETUP
+    // ========================================================================
+    
+    /**
+     * Create axios client dengan configuration
+     * Include authentication dan timeout settings
+     */
     this.client = axios.create({
       baseURL: this.apiUrl,
       headers: {
@@ -18,21 +134,71 @@ class RegionService {
   }
 
   
+  /**
+   * Get region data by code
+   * 
+   * Mengambil data wilayah berdasarkan kode dengan support untuk semua level
+   * administrasi (Provinsi, Kabupaten, Kecamatan, Desa, Dusun).
+   * 
+   * SUPPORTED CODE LENGTHS:
+   * - 2 digits: Provinsi (33)
+   * - 4 digits: Kabupaten/Kota (3301)
+   * - 6 digits: Kecamatan (330106)
+   * - 10 digits: Desa/Kelurahan (3301062016)
+   * - 13 digits: Dusun (3301062016001)
+   * 
+   * API INTEGRATION:
+   * 1. Direct API calls untuk provinsi
+   * 2. Search API untuk kabupaten, kecamatan, desa
+   * 3. Error handling untuk setiap level
+   * 4. Data enrichment untuk desa (parent regions)
+   * 
+   * @async
+   * @param {string} code - Region code (2-13 digits)
+   * @returns {Promise<Object|null>} Region data object atau null jika tidak ditemukan
+   * 
+   * @example
+   * const province = await RegionService.getRegion('33');
+   * // Returns: {code: '33', name: 'Jawa Tengah', ...}
+   * 
+   * const village = await RegionService.getRegion('3301062016');
+   * // Returns: {code: '33.01.06.2016', name: 'Tembalang', ...}
+   */
   async getRegion(code) {
     try {
       logger.info(`Fetching region data for code: ${code}`);
 
-
+      // ========================================================================
+      // API CALL DISPATCH
+      // ========================================================================
+      
+      /**
+       * Dispatch API call berdasarkan code length
+       * Different endpoints untuk different administrative levels
+       */
       let response;
 
       if (code.length === 2) {
-
+        // ========================================================================
+        // PROVINCE LEVEL (2 digits)
+        // ========================================================================
+        
+        /**
+         * Direct API call untuk provinsi
+         * Format: /provinces/{code}
+         */
         response = await this.client.get(`/provinces/${code}`);
       } else if (code.length === 4) {
-
+        // ========================================================================
+        // REGENCY LEVEL (4 digits)
+        // ========================================================================
+        
+        /**
+         * Search API untuk kabupaten/kota
+         * Use search endpoint dengan code parameter
+         */
         logger.info(`Searching for regency with code: ${code}`);
         try {
-
           response = await this.client.get('/regencies', {
             params: { search: code }
           });
@@ -42,7 +208,6 @@ class RegionService {
             if (regency) {
               response.data = { success: true, data: regency };
             } else {
-
               response.data = { success: false };
             }
           } else {
@@ -53,10 +218,16 @@ class RegionService {
           response = { data: { success: false } };
         }
       } else if (code.length === 6) {
-
+        // ========================================================================
+        // DISTRICT LEVEL (6 digits)
+        // ========================================================================
+        
+        /**
+         * Search API untuk kecamatan
+         * Use search endpoint dengan code parameter
+         */
         logger.info(`Searching for district with code: ${code}`);
         try {
-
           response = await this.client.get('/districts', {
             params: { search: code }
           });
@@ -76,8 +247,15 @@ class RegionService {
           response = { data: { success: false } };
         }
       } else if (code.length === 10) {
+        // ========================================================================
+        // VILLAGE LEVEL (10 digits)
+        // ========================================================================
         
-        
+        /**
+         * Search API untuk desa/kelurahan
+         * Format code: XX.XX.XX.XXXX
+         * Include data enrichment untuk parent regions
+         */
         const formattedCode = code.replace(/(\d{2})(\d{2})(\d{2})(\d{4})/, '$1.$2.$3.$4');
         
         response = await this.client.get('/villages', {
@@ -93,7 +271,14 @@ class RegionService {
           }
         }
       } else if (code.length === 13) {
+        // ========================================================================
+        // HAMLET LEVEL (13 digits)
+        // ========================================================================
         
+        /**
+         * Search API untuk dusun
+         * Use search endpoint dengan code parameter
+         */
         response = await this.client.get('/hamlets', {
           params: { search: code }
         });
@@ -107,6 +292,10 @@ class RegionService {
           }
         }
       } else {
+        /**
+         * Unsupported code length
+         * Log error dan return null
+         */
         logger.error(`Unsupported code length: ${code.length}`);
         return null;
       }
@@ -539,5 +728,129 @@ class RegionService {
     }
   }
 }
+
+/**
+ * ============================================================================
+ * DEVELOPER NOTES & BEST PRACTICES
+ * ============================================================================
+ *
+ * API INTEGRATION:
+ * ----------------
+ * 1. Authentication
+ *    - Bearer token authentication
+ *    - Secure API communication
+ *    - Error handling untuk auth failures
+ *    - Token refresh mechanisms
+ *
+ * 2. Request Management
+ *    - Timeout handling (10 detik)
+ *    - Retry mechanism untuk transient failures
+ *    - Rate limiting compliance
+ *    - Error recovery strategies
+ *
+ * 3. Response Handling
+ *    - Response validation
+ *    - Data normalization
+ *    - Error parsing dan handling
+ *    - Success/failure detection
+ *
+ * SEARCH & MATCHING:
+ * ------------------
+ * 1. Search Strategies
+ *    - Exact match (highest priority)
+ *    - Contains match (bidirectional)
+ *    - Partial string matching
+ *    - Case-insensitive search
+ *
+ * 2. Data Normalization
+ *    - Uppercase conversion
+ *    - Whitespace trimming
+ *    - Special character handling
+ *    - Format standardization
+ *
+ * 3. Fuzzy Matching
+ *    - Multiple matching algorithms
+ *    - Word-based matching
+ *    - Similarity scoring
+ *    - Fallback strategies
+ *
+ * DATA ENRICHMENT:
+ * ----------------
+ * 1. Hierarchical Data
+ *    - Parent region information
+ *    - Complete region hierarchy
+ *    - Relationship mapping
+ *    - Data consistency validation
+ *
+ * 2. Code Formatting
+ *    - Standardize region codes
+ *    - Format conversion (dots/no dots)
+ *    - Validation dan normalization
+ *    - Error handling untuk invalid codes
+ *
+ * 3. Data Validation
+ *    - Region code validation
+ *    - Data integrity checks
+ *    - Consistency validation
+ *    - Error reporting
+ *
+ * PERFORMANCE OPTIMIZATION:
+ * -------------------------
+ * 1. API Call Optimization
+ *    - Efficient endpoint usage
+ *    - Batch operations jika possible
+ *    - Caching strategies
+ *    - Request deduplication
+ *
+ * 2. Error Handling
+ *    - Graceful degradation
+ *    - Fallback mechanisms
+ *    - Error recovery
+ *    - User-friendly error messages
+ *
+ * 3. Monitoring
+ *    - API call metrics
+ *    - Error rates dan types
+ *    - Performance monitoring
+ *    - Usage analytics
+ *
+ * TESTING STRATEGY:
+ * -----------------
+ * [ ] Unit tests untuk search algorithms
+ * [ ] Integration tests dengan API
+ * [ ] Error scenario testing
+ * [ ] Performance testing
+ * [ ] Data validation tests
+ * [ ] Fuzzy matching accuracy tests
+ *
+ * MONITORING & OBSERVABILITY:
+ * ---------------------------
+ * 1. API Metrics
+ *    - API call success rates
+ *    - Response times
+ *    - Error rates oleh type
+ *    - Rate limiting compliance
+ *
+ * 2. Search Metrics
+ *    - Search success rates
+ *    - Matching accuracy
+ *    - Search performance
+ *    - User satisfaction
+ *
+ * 3. Data Quality Metrics
+ *    - Data enrichment success rates
+ *    - Validation accuracy
+ *    - Data consistency
+ *    - Error rates
+ *
+ * RELATED FILES:
+ * --------------
+ * - src/config/env.js: Environment configuration
+ * - src/utils/logger.js: Logging utilities
+ * - src/bot/commands/kode_wilayah.js: Region code command
+ * - src/services/AutoCreateService.js: Data creation service
+ *
+ * ============================================================================
+ */
 
 module.exports = new RegionService();

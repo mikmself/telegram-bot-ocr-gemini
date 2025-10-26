@@ -18,8 +18,46 @@ Bot Telegram yang menggunakan Google Gemini AI untuk mengekstraksi data Kartu Ke
 - **Google Gemini AI** - OCR engine
 - **MySQL** - Database
 - **Winston** - Logging
+- **Docker** - Containerization
+- **Docker Compose** - Multi-container orchestration
+
+## Requirements
+
+### Docker Requirements
+- Docker 20.10+ 
+- Docker Compose 2.0+
+- 2GB RAM minimum
+- 5GB disk space
+
+### Manual Requirements
+- Node.js 18+
+- MySQL 8.0+
+- npm 8+
 
 ## Installation
+
+### Opsi 1: Docker (Recommended)
+
+```bash
+# 1. Clone repository
+git clone https://github.com/mikmself/telegram-bot-ocr-gemini.git
+cd telegram-bot-ocr-gemini
+
+# 2. Setup environment
+cp .env.example .env
+# Edit .env dengan credentials Anda
+
+# 3. Start dengan Docker Compose
+docker-compose up -d
+
+# 4. Cek status
+docker-compose ps
+
+# 5. Lihat logs
+docker-compose logs -f smartgov-bot
+```
+
+### Opsi 2: Manual Installation
 
 ```bash
 # 1. Clone repository
@@ -35,6 +73,28 @@ cp .env.example .env
 
 # 4. Start bot
 npm start
+```
+
+### Docker Commands
+
+```bash
+# Build image
+docker build -t smartgov-bot .
+
+# Run container
+docker run -d --name smartgov-bot --env-file .env smartgov-bot
+
+# Stop container
+docker stop smartgov-bot
+
+# Remove container
+docker rm smartgov-bot
+
+# View logs
+docker logs -f smartgov-bot
+
+# Access container shell
+docker exec -it smartgov-bot sh
 ```
 
 ## Dependencies
@@ -123,12 +183,101 @@ REGION_API_KEY=your_region_api_key
 
 ## Troubleshooting
 
+### General Issues
+
 | Problem | Solution |
 |---------|----------|
 | Bot tidak merespon | Cek `TELEGRAM_BOT_TOKEN` |
 | OCR gagal | Verifikasi `GEMINI_API_KEY` |
 | Database error | Cek MySQL service & credentials |
 | Foto tidak terbaca | Gunakan foto yang jelas & resolusi tinggi |
+
+### Docker Issues
+
+| Problem | Solution |
+|---------|----------|
+| Container tidak start | Cek `docker-compose logs` |
+| Port conflict | Ubah port di `docker-compose.yml` |
+| Database connection failed | Cek MySQL container status |
+| Permission denied | Jalankan `sudo docker-compose up` |
+| Out of memory | Increase Docker memory limit |
+
+### Debug Commands
+
+```bash
+# Cek container status
+docker-compose ps
+
+# Lihat logs real-time
+docker-compose logs -f
+
+# Restart service
+docker-compose restart smartgov-bot
+
+# Rebuild container
+docker-compose up --build
+
+# Clean up
+docker-compose down -v
+```
+
+## Production Deployment
+
+### Docker Production Setup
+
+```bash
+# 1. Clone dan setup
+git clone https://github.com/mikmself/telegram-bot-ocr-gemini.git
+cd telegram-bot-ocr-gemini
+
+# 2. Setup environment untuk production
+cp .env.example .env
+# Edit .env dengan production values
+
+# 3. Start production services
+docker-compose -f docker-compose.yml up -d
+
+# 4. Setup monitoring
+docker-compose logs -f smartgov-bot
+```
+
+### Production Environment Variables
+
+```bash
+# Production settings
+NODE_ENV=production
+LOG_LEVEL=info
+
+# Database (production)
+DB_HOST=mysql
+DB_PORT=3306
+DB_DATABASE=smartgov_prod
+
+# Security
+BCRYPT_ROUNDS=12
+SESSION_EXPIRE_HOURS=8
+
+# Performance
+OCR_CONFIDENCE_THRESHOLD=85
+OCR_MAX_RETRIES=3
+```
+
+### Monitoring & Maintenance
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# View resource usage
+docker stats
+
+# Backup database
+docker exec mysql mysqldump -u root -p smartgov > backup.sql
+
+# Update application
+git pull
+docker-compose up --build -d
+```
 
 ## License
 

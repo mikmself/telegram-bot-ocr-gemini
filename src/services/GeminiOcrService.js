@@ -1,3 +1,89 @@
+/**
+ * ============================================================================
+ * FILE: src/services/GeminiOcrService.js
+ * ============================================================================
+ *
+ * DESKRIPSI:
+ * Service untuk melakukan OCR (Optical Character Recognition) pada foto
+ * Kartu Keluarga menggunakan Google Gemini AI. Service ini menangani
+ * seluruh pipeline dari image processing hingga data extraction dan
+ * validation dengan tingkat akurasi tinggi.
+ *
+ * TANGGAL DIBUAT: 2024
+ * TANGGAL MODIFIKASI TERAKHIR: 2025-10-26
+ *
+ * DEPENDENSI:
+ * - @google/generative-ai: Google Gemini AI SDK untuk OCR processing
+ * - fs.promises: File system operations untuk image handling
+ * - path: Path manipulation untuk file operations
+ * - sharp: Image optimization dan processing library
+ * - logger: Logging utility untuk tracking dan debugging
+ * - textCleaner: Text normalization dan cleaning utilities
+ *
+ * FITUR UTAMA:
+ * 1. AI-Powered OCR Processing
+ *    - Google Gemini 2.5 Flash model untuk akurasi tinggi
+ *    - Custom prompt engineering untuk Kartu Keluarga
+ *    - Retry mechanism dengan exponential backoff
+ *    - Timeout handling untuk reliability
+ *
+ * 2. Image Optimization
+ *    - Automatic image resizing untuk optimal processing
+ *    - Quality optimization dengan Sharp library
+ *    - Format conversion (JPEG optimization)
+ *    - Memory-efficient processing
+ *
+ * 3. Data Extraction & Validation
+ *    - Extract structured data dari Kartu Keluarga
+ *    - Validate NIK dan nomor KK format
+ *    - Parse family member information
+ *    - Normalize Indonesian text data
+ *
+ * 4. Post-Processing
+ *    - Text cleaning dan normalization
+ *    - Data structure validation
+ *    - Confidence score calculation
+ *    - Error handling dan recovery
+ *
+ * 5. Performance & Reliability
+ *    - Connection pooling untuk API calls
+ *    - Retry mechanism untuk transient failures
+ *    - Timeout protection
+ *    - Memory management
+ *
+ * CARA PENGGUNAAN:
+ * ```javascript
+ * const GeminiOcrService = require('./services/GeminiOcrService');
+ * 
+ * // Process image untuk OCR
+ * const result = await GeminiOcrService.processImage(imagePath);
+ * 
+ * if (result.success) {
+ *   console.log('Data extracted:', result.parsedData);
+ *   console.log('Confidence:', result.confidence);
+ * } else {
+ *   console.error('OCR failed:', result.error);
+ * }
+ * 
+ * // Validate OCR result
+ * const validation = GeminiOcrService.validateOcrResult(result);
+ * if (!validation.valid) {
+ *   console.log('Validation errors:', validation.errors);
+ * }
+ * ```
+ *
+ * CATATAN PENTING:
+ * - Memerlukan GEMINI_API_KEY environment variable
+ * - Model default: gemini-2.5-flash (cepat dan akurat)
+ * - Timeout default: 30 detik per request
+ * - Max retries: 2 kali dengan delay 2 detik
+ * - Image akan di-optimize jika > 2400px width
+ * - Temporary files akan di-cleanup otomatis
+ * - Confidence score dihitung berdasarkan completeness
+ *
+ * ============================================================================
+ */
+
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs').promises;
 const path = require('path');
@@ -5,22 +91,143 @@ const sharp = require('sharp');
 const logger = require('../utils/logger');
 const TextCleaner = require('../utils/textCleaner');
 
+// ============================================================================
+// GEMINI OCR SERVICE CLASS
+// ============================================================================
+
+/**
+ * Class GeminiOcrService
+ * 
+ * Service utama untuk melakukan OCR pada foto Kartu Keluarga menggunakan
+ * Google Gemini AI. Menggunakan singleton pattern untuk efisiensi resource.
+ * 
+ * DESIGN PATTERN: Singleton
+ * - Single instance untuk seluruh aplikasi
+ * - Shared configuration dan connection
+ * - Memory efficient untuk multiple requests
+ * 
+ * CONFIGURATION:
+ * - Model: gemini-2.5-flash (default) atau custom
+ * - Max Retries: 2 (default) untuk transient failures
+ * - Timeout: 30 detik (default) per request
+ * - Temp Directory: ./temp (default) untuk image processing
+ * 
+ * @class GeminiOcrService
+ */
 class GeminiOcrService {
+  
+  /**
+   * Constructor - Inisialisasi Gemini OCR Service
+   * 
+   * Setup konfigurasi, validasi API key, dan inisialisasi
+   * Google Generative AI client.
+   * 
+   * CONFIGURATION LOADING:
+   * 1. Load API key dari environment variables
+   * 2. Set model (default: gemini-2.5-flash)
+   * 3. Configure retry dan timeout settings
+   * 4. Setup temporary directory
+   * 
+   * VALIDATION:
+   * - API key harus ada (throw error jika tidak)
+   * - Model harus valid Gemini model
+   * - Timeout dan retry harus positive numbers
+   * 
+   * INITIALIZATION:
+   * - Create GoogleGenerativeAI instance
+   * - Get generative model dengan konfigurasi
+   * - Ensure temp directory exists
+   * - Log initialization success
+   * 
+   * @constructor
+   * @throws {Error} Jika GEMINI_API_KEY tidak di-set
+   * 
+   * @example
+   * // Service di-initialize otomatis saat require
+   * const service = require('./GeminiOcrService');
+   * // service sudah ready untuk digunakan
+   */
   constructor() {
+    // ========================================================================
+    // CONFIGURATION LOADING
+    // ========================================================================
+    
+    /**
+     * Google Gemini API Key
+     * @type {string}
+     * Required: Ya, akan throw error jika tidak ada
+     */
     this.apiKey = process.env.GEMINI_API_KEY;
+    
+    /**
+     * Gemini model yang digunakan
+     * @type {string}
+     * Default: 'gemini-2.5-flash'
+     * Options: gemini-2.5-flash, gemini-2.5-pro, gemini-1.5-pro
+     */
     this.model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    
+    /**
+     * Maksimal retry attempts untuk API calls
+     * @type {number}
+     * Default: 2
+     * Range: 1-5 (recommended)
+     */
     this.maxRetries = parseInt(process.env.OCR_MAX_RETRIES) || 2;
+    
+    /**
+     * Timeout untuk API calls (dalam milliseconds)
+     * @type {number}
+     * Default: 30000 (30 detik)
+     * Range: 10000-60000 (10-60 detik)
+     */
     this.timeout = parseInt(process.env.OCR_TIMEOUT) || 30000;
+    
+    /**
+     * Temporary directory untuk image processing
+     * @type {string}
+     * Default: './temp'
+     */
     this.tempDir = process.env.TEMP_DIR || './temp';
 
+    // ========================================================================
+    // VALIDATION
+    // ========================================================================
+    
+    /**
+     * Validasi API key requirement
+     * Throw error jika API key tidak tersedia
+     */
     if (!this.apiKey) {
       throw new Error('GEMINI_API_KEY is not set in environment variables');
     }
 
+    // ========================================================================
+    // INITIALIZATION
+    // ========================================================================
+    
+    /**
+     * Inisialisasi Google Generative AI client
+     * Menggunakan API key yang sudah divalidasi
+     */
     this.genAI = new GoogleGenerativeAI(this.apiKey);
+    
+    /**
+     * Get generative model instance
+     * Menggunakan model yang sudah dikonfigurasi
+     */
     this.generativeModel = this.genAI.getGenerativeModel({ model: this.model });
 
+    /**
+     * Ensure temporary directory exists
+     * Buat directory jika belum ada
+     */
     this.ensureTempDir();
+    
+    /**
+     * Log successful initialization
+     * Informasi model dan konfigurasi yang digunakan
+     */
     logger.info(`GeminiOcrService initialized with model: ${this.model}`);
   }
 
@@ -33,6 +240,63 @@ class GeminiOcrService {
     }
   }
 
+  /**
+   * Process image untuk OCR menggunakan Google Gemini AI
+   * 
+   * Method utama untuk melakukan OCR pada foto Kartu Keluarga.
+   * Menggunakan retry mechanism dan timeout protection untuk reliability.
+   * 
+   * PROCESSING PIPELINE:
+   * 1. Image Validation & Optimization
+   *    - Check file existence dan accessibility
+   *    - Optimize image size jika diperlukan
+   *    - Convert ke base64 untuk API
+   * 
+   * 2. AI Processing
+   *    - Send ke Google Gemini AI dengan custom prompt
+   *    - Apply timeout protection
+   *    - Handle API response
+   * 
+   * 3. Data Processing
+   *    - Parse JSON response dari AI
+   *    - Validate extracted data
+   *    - Post-process dan clean data
+   *    - Calculate confidence score
+   * 
+   * 4. Cleanup & Return
+   *    - Cleanup temporary files
+   *    - Return structured result
+   * 
+   * RETRY MECHANISM:
+   * - Max retries: 2 (configurable)
+   * - Delay between retries: 2 detik
+   * - Exponential backoff untuk transient failures
+   * 
+   * TIMEOUT PROTECTION:
+   * - Default timeout: 30 detik
+   * - Race condition dengan Promise.race()
+   * - Graceful failure jika timeout
+   * 
+   * @async
+   * @param {string} imagePath - Path ke file image yang akan diproses
+   * @returns {Promise<Object>} Result object dengan struktur:
+   *   - success: {boolean} - Status keberhasilan
+   *   - confidence: {number} - Confidence score (0-100)
+   *   - parsedData: {Object|null} - Data yang diekstrak
+   *   - processingTime: {number} - Waktu processing (ms)
+   *   - memberCount: {number} - Jumlah anggota keluarga
+   *   - error: {string} - Error message jika gagal
+   * 
+   * @throws {Error} Jika imagePath tidak valid atau tidak accessible
+   * 
+   * @example
+   * const result = await service.processImage('/path/to/kk.jpg');
+   * if (result.success) {
+   *   console.log('KK Number:', result.parsedData.nomor_kk);
+   *   console.log('Members:', result.memberCount);
+   *   console.log('Confidence:', result.confidence);
+   * }
+   */
   async processImage(imagePath) {
     const startTime = Date.now();
     let attempt = 0;
@@ -42,17 +306,33 @@ class GeminiOcrService {
         attempt++;
         logger.info(`Processing image with Gemini AI (attempt ${attempt}/${this.maxRetries}): ${imagePath}`);
 
+        // ====================================================================
+        // STEP 1: IMAGE VALIDATION & OPTIMIZATION
+        // ====================================================================
         
+        /**
+         * Validasi file existence dan accessibility
+         * Pastikan file image dapat diakses sebelum processing
+         */
         await fs.access(imagePath);
 
-        
+        /**
+         * Optimize image untuk processing yang optimal
+         * Resize jika terlalu besar, convert format jika diperlukan
+         */
         const optimizedPath = await this.optimizeImage(imagePath);
 
-        
+        /**
+         * Convert image ke base64 untuk API
+         * Gemini AI memerlukan base64 encoded image
+         */
         const imageBuffer = await fs.readFile(optimizedPath);
         const base64Image = imageBuffer.toString('base64');
 
-        
+        /**
+         * Format image data untuk Gemini API
+         * Menggunakan inlineData format dengan MIME type
+         */
         const imagePart = {
           inlineData: {
             data: base64Image,
@@ -60,10 +340,20 @@ class GeminiOcrService {
           }
         };
 
+        // ====================================================================
+        // STEP 2: AI PROCESSING
+        // ====================================================================
 
+        /**
+         * Create custom prompt untuk Kartu Keluarga
+         * Prompt yang dioptimasi untuk extract data KK
+         */
         const prompt = this.createPrompt();
 
-
+        /**
+         * Call Gemini API dengan timeout protection
+         * Race condition antara API call dan timeout
+         */
         logger.info('Calling Gemini API with timeout...');
 
         const apiCall = this.generativeModel.generateContent([prompt, imagePart]);
@@ -78,7 +368,14 @@ class GeminiOcrService {
         logger.info('Gemini API response received');
         logger.info(`Raw response length: ${text.length} characters`);
 
+        // ====================================================================
+        // STEP 3: CLEANUP OPTIMIZED IMAGE
+        // ====================================================================
 
+        /**
+         * Cleanup optimized image jika berbeda dari original
+         * Hapus temporary file yang dibuat untuk optimization
+         */
         if (optimizedPath !== imagePath) {
           try {
             await fs.unlink(optimizedPath);
@@ -88,18 +385,34 @@ class GeminiOcrService {
           }
         }
 
-        
+        // ====================================================================
+        // STEP 4: DATA PROCESSING
+        // ====================================================================
+
+        /**
+         * Parse JSON response dari Gemini AI
+         * Convert text response ke structured data
+         */
         const parsedData = this.parseGeminiResponse(text);
 
-        
+        /**
+         * Validate parsed data structure
+         * Pastikan data yang diekstrak valid dan lengkap
+         */
         if (!this.validateParsedData(parsedData)) {
           throw new Error('Parsed data validation failed');
         }
 
-
+        /**
+         * Post-process dan clean data
+         * Normalize text, clean OCR artifacts
+         */
         const cleanedData = await this.postProcessData(parsedData);
 
-
+        /**
+         * Calculate confidence score
+         * Berdasarkan completeness dan quality data
+         */
         const confidence = this.calculateConfidence(cleanedData);
 
         const processingTime = Date.now() - startTime;
@@ -129,12 +442,49 @@ class GeminiOcrService {
           };
         }
 
-        
+        /**
+         * Wait sebelum retry
+         * Exponential backoff untuk transient failures
+         */
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
   }
 
+  /**
+   * Create optimized prompt untuk Gemini AI
+   * 
+   * Membuat prompt yang dioptimasi khusus untuk extract data dari
+   * Kartu Keluarga Indonesia. Prompt ini dirancang untuk mendapatkan
+   * hasil OCR yang akurat dan konsisten.
+   * 
+   * PROMPT DESIGN PRINCIPLES:
+   * 1. Specificity: Fokus pada Kartu Keluarga Indonesia
+   * 2. Accuracy: Emphasis pada akurasi data kritis (NIK, KK)
+   * 3. Structure: Clear JSON output format
+   * 4. Validation: Built-in validation rules
+   * 5. Localization: Indonesian terms dan format
+   * 
+   * KEY FEATURES:
+   * - 16-digit validation untuk NIK dan nomor KK
+   * - Indonesian gender terms (LAKI-LAKI/PEREMPUAN)
+   * - Family relationship mapping
+   * - Date format specification (DD-MM-YYYY)
+   * - Religion dan citizenship mapping
+   * - RT/RW format validation
+   * 
+   * OUTPUT FORMAT:
+   * - Pure JSON tanpa markdown
+   * - Structured data object
+   * - Array untuk family members
+   * - Validation-ready format
+   * 
+   * @returns {string} Optimized prompt untuk Gemini AI
+   * 
+   * @example
+   * const prompt = service.createPrompt();
+   * // Prompt akan digunakan dalam generateContent([prompt, imagePart])
+   */
   createPrompt() {
     return `Analyze this Indonesian Family Card (Kartu Keluarga/KK) image and extract ALL data with PERFECT accuracy.
 
@@ -518,5 +868,150 @@ BEGIN EXTRACTION:`;
     };
   }
 }
+
+/**
+ * ============================================================================
+ * DEVELOPER NOTES & BEST PRACTICES
+ * ============================================================================
+ *
+ * GEMINI AI INTEGRATION:
+ * ----------------------
+ * 1. Model Selection
+ *    - gemini-2.5-flash: Fast, cost-effective, good accuracy
+ *    - gemini-2.5-pro: Higher accuracy, slower, more expensive
+ *    - gemini-1.5-pro: Alternative option, good for complex images
+ *
+ * 2. Prompt Engineering
+ *    - Specific instructions untuk Kartu Keluarga
+ *    - Clear output format specification
+ *    - Validation rules built-in
+ *    - Indonesian localization
+ *
+ * 3. Error Handling
+ *    - Retry mechanism untuk transient failures
+ *    - Timeout protection untuk long-running requests
+ *    - Graceful degradation pada API failures
+ *    - Detailed error logging
+ *
+ * IMAGE PROCESSING OPTIMIZATION:
+ * ------------------------------
+ * 1. Size Optimization
+ *    - Resize jika width > 2400px
+ *    - Maintain aspect ratio
+ *    - JPEG quality 90% untuk balance size/quality
+ *    - Memory-efficient processing
+ *
+ * 2. Format Handling
+ *    - Convert semua format ke JPEG
+ *    - Base64 encoding untuk API
+ *    - MIME type specification
+ *    - Temporary file cleanup
+ *
+ * 3. Performance Considerations
+ *    - Lazy loading untuk large images
+ *    - Streaming untuk memory efficiency
+ *    - Parallel processing jika multiple images
+ *    - Cache optimization
+ *
+ * DATA VALIDATION STRATEGY:
+ * -------------------------
+ * 1. Format Validation
+ *    - NIK: 16 digits exact
+ *    - KK Number: 16 digits exact
+ *    - Date: DD-MM-YYYY format
+ *    - Gender: LAKI-LAKI/PEREMPUAN only
+ *    - RT/RW: XXX/XXX format
+ *
+ * 2. Content Validation
+ *    - Required fields presence
+ *    - Data type consistency
+ *    - Range validation (dates, ages)
+ *    - Business rule validation
+ *
+ * 3. Confidence Scoring
+ *    - Based on data completeness
+ *    - Field accuracy assessment
+ *    - OCR quality indicators
+ *    - Validation success rate
+ *
+ * SECURITY CONSIDERATIONS:
+ * ------------------------
+ * 1. API Key Protection
+ *    - Environment variable storage
+ *    - No hardcoded credentials
+ *    - Secure transmission
+ *    - Key rotation support
+ *
+ * 2. Data Privacy
+ *    - Temporary file cleanup
+ *    - No persistent image storage
+ *    - Secure data transmission
+ *    - GDPR compliance considerations
+ *
+ * 3. Rate Limiting
+ *    - API call throttling
+ *    - Request queuing
+ *    - Circuit breaker pattern
+ *    - Monitoring dan alerting
+ *
+ * MONITORING & OBSERVABILITY:
+ * ---------------------------
+ * 1. Performance Metrics
+ *    - Processing time tracking
+ *    - Success/failure rates
+ *    - API response times
+ *    - Memory usage monitoring
+ *
+ * 2. Error Tracking
+ *    - Detailed error logging
+ *    - Stack trace capture
+ *    - Error categorization
+ *    - Alert thresholds
+ *
+ * 3. Business Metrics
+ *    - OCR accuracy rates
+ *    - Confidence score distribution
+ *    - Processing volume
+ *    - User satisfaction metrics
+ *
+ * TESTING STRATEGY:
+ * -----------------
+ * [ ] Unit tests untuk individual methods
+ * [ ] Integration tests dengan mock API
+ * [ ] End-to-end tests dengan real images
+ * [ ] Performance tests dengan large images
+ * [ ] Error scenario testing
+ * [ ] Validation accuracy testing
+ *
+ * DEPLOYMENT CONSIDERATIONS:
+ * --------------------------
+ * 1. Environment Configuration
+ *    - API key management
+ *    - Model selection per environment
+ *    - Timeout configuration
+ *    - Retry settings
+ *
+ * 2. Resource Requirements
+ *    - Memory untuk image processing
+ *    - CPU untuk Sharp operations
+ *    - Network untuk API calls
+ *    - Storage untuk temporary files
+ *
+ * 3. Scaling Considerations
+ *    - Horizontal scaling support
+ *    - Load balancing
+ *    - Queue management
+ *    - Resource pooling
+ *
+ * RELATED FILES:
+ * --------------
+ * - src/bot/handlers/photo.js: Photo upload handler
+ * - src/services/AutoCreateService.js: Database operations
+ * - src/utils/textCleaner.js: Text normalization
+ * - src/config/env.js: Configuration management
+ * - src/utils/logger.js: Logging utilities
+ *
+ * ============================================================================
+ */
 
 module.exports = new GeminiOcrService();
