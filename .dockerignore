@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+package-lock.json
+npm-debug.log*
+
+# Environment
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+temp/
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+README.md
+SETUP.md
+UPDATE_MIGRATION.md
+REFERENCE_DATA_STATUS.md
+database_schema.sql
+
+# Build
+dist/
+build/

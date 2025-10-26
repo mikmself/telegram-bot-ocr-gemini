@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  smartgov-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartgov-gemini-bot
+    restart: always
+
+    # Use host network to access MySQL on 127.0.0.1:3320
+    network_mode: "host"
+
+    # Environment variables
+    env_file:
+      - .env
+
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Jakarta
+
+    # Volumes for logs and temp files
+    volumes:
+      - ./logs:/app/logs
+      - ./temp:/app/temp
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "node.*index.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
