@@ -2,7 +2,7 @@ const db = require('../config/database');
 const logger = require('../utils/logger');
 
 class FamilyDataModel {
-  // Find family by family card number
+  
   static async findByFamilyCard(familyCardNumber) {
     try {
       const sql = 'SELECT * FROM family_data WHERE family_card_number = ? LIMIT 1';
@@ -19,7 +19,7 @@ class FamilyDataModel {
     }
   }
 
-  // Create new family record
+  
   static async create(familyData) {
     try {
       const sql = `
@@ -72,7 +72,7 @@ class FamilyDataModel {
     }
   }
 
-  // Update family record
+  
   static async update(familyCardNumber, familyData) {
     try {
       const sql = `
@@ -121,7 +121,7 @@ class FamilyDataModel {
     }
   }
 
-  // Delete family record
+  
   static async delete(familyCardNumber) {
     try {
       const sql = 'DELETE FROM family_data WHERE family_card_number = ?';
@@ -136,7 +136,7 @@ class FamilyDataModel {
     }
   }
 
-  // Get family with members
+  
   static async getFamilyWithMembers(familyCardNumber) {
     try {
       const familySql = 'SELECT * FROM family_data WHERE family_card_number = ? LIMIT 1';
@@ -165,7 +165,7 @@ class FamilyDataModel {
     }
   }
 
-  // Update member counts
+  
   static async updateMemberCounts(familyCardNumber) {
     try {
       const sql = `
@@ -192,7 +192,7 @@ class FamilyDataModel {
     }
   }
 
-  // Search families
+  
   static async search(criteria) {
     try {
       let sql = 'SELECT * FROM family_data WHERE 1=1';
@@ -229,7 +229,7 @@ class FamilyDataModel {
     }
   }
 
-  // Get statistics
+  
   static async getStats() {
     try {
       const totalSql = 'SELECT COUNT(*) as total FROM family_data';

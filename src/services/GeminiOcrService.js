@@ -42,17 +42,17 @@ class GeminiOcrService {
         attempt++;
         logger.info(`Processing image with Gemini AI (attempt ${attempt}/${this.maxRetries}): ${imagePath}`);
 
-        // Verify file exists
+        
         await fs.access(imagePath);
 
-        // Optimize image if needed
+        
         const optimizedPath = await this.optimizeImage(imagePath);
 
-        // Read image as base64
+        
         const imageBuffer = await fs.readFile(optimizedPath);
         const base64Image = imageBuffer.toString('base64');
 
-        // Prepare image part for Gemini
+        
         const imagePart = {
           inlineData: {
             data: base64Image,
@@ -60,10 +60,10 @@ class GeminiOcrService {
           }
         };
 
-        // Create prompt
+        
         const prompt = this.createPrompt();
 
-        // Call Gemini API
+        
         logger.info('Calling Gemini API...');
         const result = await this.generativeModel.generateContent([prompt, imagePart]);
         const response = await result.response;
@@ -72,20 +72,20 @@ class GeminiOcrService {
         logger.info('Gemini API response received');
         logger.info(`Raw response length: ${text.length} characters`);
 
-        // Clean up optimized image if different from original
+        
         if (optimizedPath !== imagePath) {
           await fs.unlink(optimizedPath).catch(() => {});
         }
 
-        // Parse JSON response
+        
         const parsedData = this.parseGeminiResponse(text);
 
-        // Validate parsed data
+        
         if (!this.validateParsedData(parsedData)) {
           throw new Error('Parsed data validation failed');
         }
 
-        // Post-process data
+        
         const cleanedData = await this.postProcessData(parsedData);
 
         const processingTime = Date.now() - startTime;
@@ -96,7 +96,7 @@ class GeminiOcrService {
 
         return {
           success: true,
-          confidence: 95, // Gemini doesn't provide confidence, use high default
+          confidence: 95, 
           parsedData: cleanedData,
           processingTime,
           memberCount: cleanedData.table.length
@@ -114,7 +114,7 @@ class GeminiOcrService {
           };
         }
 
-        // Wait before retry
+        
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
@@ -189,17 +189,17 @@ BEGIN EXTRACTION:`;
     try {
       logger.info('Parsing Gemini response...');
 
-      // Remove markdown code blocks if present
+      
       let cleanedText = text.trim();
       cleanedText = cleanedText.replace(/^```json\s*\n?/i, '');
       cleanedText = cleanedText.replace(/^```\s*\n?/i, '');
       cleanedText = cleanedText.replace(/\n?```\s*$/i, '');
       cleanedText = cleanedText.trim();
 
-      // Log cleaned text for debugging
+      
       logger.info(`Cleaned text (first 500 chars): ${cleanedText.substring(0, 500)}`);
 
-      // Parse JSON
+      
       const parsed = JSON.parse(cleanedText);
 
       logger.info('Successfully parsed JSON response');
@@ -217,16 +217,16 @@ BEGIN EXTRACTION:`;
   validateParsedData(data) {
     const errors = [];
 
-    // Validate nomor_kk
+    
     if (!data.nomor_kk || !/^\d{16}$/.test(data.nomor_kk)) {
       errors.push(`Invalid nomor_kk: ${data.nomor_kk}`);
     }
 
-    // Validate table
+    
     if (!data.table || !Array.isArray(data.table) || data.table.length === 0) {
       errors.push('No family members found in table');
     } else {
-      // Validate each member
+      
       data.table.forEach((member, index) => {
         if (!member.nik || !/^\d{16}$/.test(member.nik)) {
           errors.push(`Member ${index + 1}: Invalid NIK: ${member.nik}`);
@@ -253,26 +253,26 @@ BEGIN EXTRACTION:`;
   async postProcessData(data) {
     logger.info('Post-processing extracted data...');
 
-    // Clean basic fields
+    
     data.alamat = TextCleaner.cleanOcrText(data.alamat || '');
     data.desa_kelurahan = TextCleaner.cleanOcrText(data.desa_kelurahan || '');
     data.kecamatan = TextCleaner.cleanOcrText(data.kecamatan || '');
     data.kabupaten_kota = TextCleaner.cleanOcrText(data.kabupaten_kota || '');
     data.provinsi = TextCleaner.cleanOcrText(data.provinsi || '');
 
-    // Normalize RT/RW
+    
     if (data.rt_rw) {
       data.rt_rw = this.normalizeRTRW(data.rt_rw);
     }
 
-    // Process each family member
+    
     if (data.table && Array.isArray(data.table)) {
       data.table = data.table.map((member, index) => {
         return this.processMember(member, index);
       }).filter(member => member !== null);
     }
 
-    // Set kepala keluarga if missing
+    
     if (!data.nama_kepala_keluarga && data.table.length > 0) {
       data.nama_kepala_keluarga = data.table[0].nama_lengkap;
     }
@@ -283,34 +283,34 @@ BEGIN EXTRACTION:`;
 
   processMember(member, index) {
     try {
-      // Normalize name
+      
       if (member.nama_lengkap) {
         member.nama_lengkap = TextCleaner.normalizeName(member.nama_lengkap);
       }
 
-      // Normalize gender
+      
       if (member.jenis_kelamin) {
         const normalized = TextCleaner.normalizeGender(member.jenis_kelamin);
         if (normalized) {
-          // Convert L/P back to full format
+          
           member.jenis_kelamin = normalized === 'L' ? 'LAKI-LAKI' : 'PEREMPUAN';
         }
       }
 
-      // Normalize family relationship
+      
       if (member.status_hubungan_dalam_keluarga) {
         member.status_hubungan_dalam_keluarga = TextCleaner.normalizeFamilyRelationship(
           member.status_hubungan_dalam_keluarga
         );
       }
 
-      // Set defaults
+      
       member.kewarganegaraan = member.kewarganegaraan || 'WNI';
       member.nama_ayah = member.nama_ayah || '';
       member.nama_ibu = member.nama_ibu || '';
       member.no = (index + 1).toString();
 
-      // Clean birth place
+      
       if (member.tempat_lahir) {
         member.tempat_lahir = TextCleaner.cleanOcrText(member.tempat_lahir);
       }
@@ -326,7 +326,7 @@ BEGIN EXTRACTION:`;
   normalizeRTRW(rtRw) {
     if (!rtRw) return '';
 
-    // Extract numbers
+    
     const matches = rtRw.match(/(\d+).*?(\d+)/);
     if (matches && matches.length >= 3) {
       const rt = matches[1].padStart(3, '0');
@@ -341,7 +341,7 @@ BEGIN EXTRACTION:`;
     try {
       const metadata = await sharp(imagePath).metadata();
 
-      // If image is already good size, return as-is
+      
       if (metadata.width && metadata.width <= 2400) {
         return imagePath;
       }
@@ -380,12 +380,12 @@ BEGIN EXTRACTION:`;
     const data = ocrResult.parsedData;
     const errors = [];
 
-    // Validate nomor_kk
+    
     if (!data.nomor_kk || !/^\d{16}$/.test(data.nomor_kk)) {
       errors.push('Invalid or missing KK number');
     }
 
-    // Validate family members
+    
     if (!data.table || data.table.length === 0) {
       errors.push('No family members found');
     } else {

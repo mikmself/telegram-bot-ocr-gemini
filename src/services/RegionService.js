@@ -17,19 +17,19 @@ class RegionService {
     });
   }
 
-  // Get region by code
+  
   async getRegion(code) {
     try {
       logger.info(`Fetching region data for code: ${code}`);
 
-      // Try different endpoints based on code length
+      
       let response;
       
       if (code.length === 2) {
-        // Province
+        
         response = await this.client.get(`/provinces/${code}`);
       } else if (code.length === 4) {
-        // Regency - need to find by searching all provinces
+        
         const provinces = await this.client.get('/provinces');
         if (provinces.data && provinces.data.data) {
           for (const province of provinces.data.data) {
@@ -43,12 +43,12 @@ class RegionService {
                 }
               }
             } catch (e) {
-              // Continue to next province
+              
             }
           }
         }
       } else if (code.length === 6) {
-        // District - need to find by searching all regencies
+        
         const provinces = await this.client.get('/provinces');
         if (provinces.data && provinces.data.data) {
           for (const province of provinces.data.data) {
@@ -66,19 +66,19 @@ class RegionService {
                       }
                     }
                   } catch (e) {
-                    // Continue to next regency
+                    
                   }
                 }
                 if (response && response.data && response.data.success) break;
               }
             } catch (e) {
-              // Continue to next province
+              
             }
           }
         }
       } else if (code.length === 10) {
-        // Village - search in villages endpoint
-        // Convert 3301062016 to 33.01.06.2016 format
+        
+        
         const formattedCode = code.replace(/(\d{2})(\d{2})(\d{2})(\d{4})/, '$1.$2.$3.$4');
         
         response = await this.client.get('/villages', {
@@ -94,7 +94,7 @@ class RegionService {
           }
         }
       } else if (code.length === 13) {
-        // Hamlet - search in hamlets endpoint
+        
         response = await this.client.get('/hamlets', {
           params: { search: code }
         });
@@ -125,27 +125,27 @@ class RegionService {
     }
   }
 
-  // Get province by code
+  
   async getProvince(code) {
     return await this.getRegion(code);
   }
 
-  // Get regency/city by code
+  
   async getRegency(code) {
     return await this.getRegion(code);
   }
 
-  // Get district by code
+  
   async getDistrict(code) {
     return await this.getRegion(code);
   }
 
-  // Get village by code
+  
   async getVillage(code) {
     return await this.getRegion(code);
   }
 
-  // Parse region codes from address
+  
   async parseRegionCodes(provinsi, kabupatenKota, kecamatan, desaKelurahan) {
     try {
       logger.info('Parsing region codes from address...');
@@ -158,7 +158,7 @@ class RegionService {
         kode_kelurahan: null
       };
       
-      // Search province
+      
       if (provinsi) {
         logger.info(`Searching province: ${provinsi}`);
         const province = await this.searchProvince(provinsi);
@@ -170,7 +170,7 @@ class RegionService {
         }
       }
       
-      // Search regency
+      
       if (kabupatenKota && result.kode_provinsi) {
         logger.info(`Searching regency: ${kabupatenKota} in province ${result.kode_provinsi}`);
         const regency = await this.searchRegency(result.kode_provinsi, kabupatenKota);
@@ -182,7 +182,7 @@ class RegionService {
         }
       }
       
-      // Search district
+      
       if (kecamatan && result.kode_kabupaten) {
         logger.info(`Searching district: ${kecamatan} in regency ${result.kode_kabupaten}`);
         const district = await this.searchDistrict(result.kode_kabupaten, kecamatan);
@@ -194,7 +194,7 @@ class RegionService {
         }
       }
       
-      // Search village
+      
       if (desaKelurahan && result.kode_kecamatan) {
         logger.info(`Searching village: ${desaKelurahan} in district ${result.kode_kecamatan}`);
         const village = await this.searchVillage(result.kode_kecamatan, desaKelurahan);
@@ -219,20 +219,20 @@ class RegionService {
     }
   }
 
-  // Search province by name
+  
   async searchProvince(name) {
     try {
       logger.info(`Searching province: ${name}`);
       
-      // Normalize search term
+      
       const searchTerm = name.trim().toUpperCase();
       
-      // Try API search first
+      
       let response = await this.client.get('/provinces', {
         params: { search: name }
       });
       
-      // Get all provinces if search returns nothing
+      
       if (!response.data || !response.data.data || response.data.data.length === 0) {
         logger.info('API search returned no results, fetching all provinces');
         response = await this.client.get('/provinces');
@@ -241,7 +241,7 @@ class RegionService {
       if (response.data && response.data.data) {
         const provinces = response.data.data;
         
-        // Try exact match first (case-insensitive)
+        
         let found = provinces.find(p => 
           p.name.toUpperCase() === searchTerm
         );
@@ -251,7 +251,7 @@ class RegionService {
           return found;
         }
         
-        // Try contains match
+        
         found = provinces.find(p =>
           p.name.toUpperCase().includes(searchTerm) ||
           searchTerm.includes(p.name.toUpperCase())
@@ -262,7 +262,7 @@ class RegionService {
           return found;
         }
         
-        // Try partial word match
+        
         const searchWords = searchTerm.split(/\s+/);
         found = provinces.find(p => {
           const provinceWords = p.name.toUpperCase().split(/\s+/);
@@ -283,19 +283,19 @@ class RegionService {
     }
   }
 
-  // Search regency by name
+  
   async searchRegency(provinceCode, name) {
     try {
       logger.info(`Searching regency: ${name} in province ${provinceCode}`);
       
       const searchTerm = name.trim().toUpperCase();
       
-      // Try API search first
+      
       let response = await this.client.get('/regencies', {
         params: { search: name }
       });
       
-      // Get all regencies if search returns nothing
+      
       if (!response.data || !response.data.data || response.data.data.length === 0) {
         logger.info('API search returned no results, fetching all regencies');
         response = await this.client.get('/regencies');
@@ -304,11 +304,11 @@ class RegionService {
       if (response.data && response.data.data) {
         const regencies = response.data.data;
         
-        // Filter by province code first
+        
         const provinceRegencies = regencies.filter(r => r.provinceCode === provinceCode);
         logger.info(`Found ${provinceRegencies.length} regencies in province ${provinceCode}`);
         
-        // Try exact match first
+        
         let found = provinceRegencies.find(r => 
           r.name.toUpperCase() === searchTerm ||
           r.name.toUpperCase() === `KABUPATEN ${searchTerm}` ||
@@ -320,7 +320,7 @@ class RegionService {
           return found;
         }
         
-        // Try contains match (remove KABUPATEN/KOTA prefix)
+        
         found = provinceRegencies.find(r => {
           const cleanName = r.name.toUpperCase().replace(/^(KABUPATEN|KOTA)\s+/, '');
           return cleanName.includes(searchTerm) || searchTerm.includes(cleanName);
@@ -331,7 +331,7 @@ class RegionService {
           return found;
         }
         
-        // Try partial word match
+        
         const searchWords = searchTerm.split(/\s+/);
         found = provinceRegencies.find(r => {
           const regencyWords = r.name.toUpperCase().split(/\s+/);
@@ -354,19 +354,19 @@ class RegionService {
     }
   }
 
-  // Search district by name
+  
   async searchDistrict(regencyCode, name) {
     try {
       logger.info(`Searching district: ${name} in regency ${regencyCode}`);
       
       const searchTerm = name.trim().toUpperCase();
       
-      // Try API search first
+      
       let response = await this.client.get('/districts', {
         params: { search: name }
       });
       
-      // Get all districts if search returns nothing
+      
       if (!response.data || !response.data.data || response.data.data.length === 0) {
         logger.info('API search returned no results, fetching all districts');
         response = await this.client.get('/districts');
@@ -375,11 +375,11 @@ class RegionService {
       if (response.data && response.data.data) {
         const districts = response.data.data;
         
-        // Filter by regency code first
+        
         const regencyDistricts = districts.filter(d => d.regencyCode === regencyCode);
         logger.info(`Found ${regencyDistricts.length} districts in regency ${regencyCode}`);
         
-        // Try exact match first
+        
         let found = regencyDistricts.find(d => 
           d.name.toUpperCase() === searchTerm
         );
@@ -389,7 +389,7 @@ class RegionService {
           return found;
         }
         
-        // Try contains match
+        
         found = regencyDistricts.find(d =>
           d.name.toUpperCase().includes(searchTerm) ||
           searchTerm.includes(d.name.toUpperCase())
@@ -400,7 +400,7 @@ class RegionService {
           return found;
         }
         
-        // Try partial word match
+        
         const searchWords = searchTerm.split(/\s+/);
         found = regencyDistricts.find(d => {
           const districtWords = d.name.toUpperCase().split(/\s+/);
@@ -423,19 +423,19 @@ class RegionService {
     }
   }
 
-  // Search village by name
+  
   async searchVillage(districtCode, name) {
     try {
       logger.info(`Searching village: ${name} in district ${districtCode}`);
       
       const searchTerm = name.trim().toUpperCase();
       
-      // Try API search first
+      
       let response = await this.client.get('/villages', {
         params: { search: name }
       });
       
-      // Get all villages if search returns nothing
+      
       if (!response.data || !response.data.data || response.data.data.length === 0) {
         logger.info('API search returned no results, fetching all villages');
         response = await this.client.get('/villages');
@@ -444,11 +444,11 @@ class RegionService {
       if (response.data && response.data.data) {
         const villages = response.data.data;
         
-        // Filter by district code first
+        
         const districtVillages = villages.filter(v => v.districtCode === districtCode);
         logger.info(`Found ${districtVillages.length} villages in district ${districtCode}`);
         
-        // Try exact match first
+        
         let found = districtVillages.find(v => 
           v.name.toUpperCase() === searchTerm
         );
@@ -458,7 +458,7 @@ class RegionService {
           return found;
         }
         
-        // Try contains match
+        
         found = districtVillages.find(v =>
           v.name.toUpperCase().includes(searchTerm) ||
           searchTerm.includes(v.name.toUpperCase())
@@ -469,7 +469,7 @@ class RegionService {
           return found;
         }
         
-        // Try partial word match
+        
         const searchWords = searchTerm.split(/\s+/);
         found = districtVillages.find(v => {
           const villageWords = v.name.toUpperCase().split(/\s+/);
@@ -492,7 +492,7 @@ class RegionService {
     }
   }
 
-  // Get full region hierarchy
+  
   async getFullRegion(villageCode) {
     try {
       const village = await this.getVillage(villageCode);

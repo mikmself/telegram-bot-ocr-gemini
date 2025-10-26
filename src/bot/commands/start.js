@@ -7,50 +7,57 @@ module.exports = async (bot, msg) => {
 
   logger.info(`/start command from chat ${chatId}`);
 
-  // Check if already logged in
   const isLoggedIn = AuthService.isLoggedIn(chatId);
 
-  let message = `✅ Selamat datang di *SmartGov Gemini Bot*! 👋\n\n`;
+  let message = `Selamat datang di *Sistem Bot SmartGov Gemini*!\n\n`;
+  message += `Sistem ini dirancang khusus untuk membantu aparatur desa dalam memproses data Kartu Keluarga (KK) secara otomatis menggunakan teknologi kecerdasan buatan Google Gemini.\n\n`;
 
   if (isLoggedIn) {
     const userInfo = AuthService.getUserInfo(chatId);
     const hasVillageCode = AuthService.hasVillageCode(chatId);
     
-    message += `Anda sudah login sebagai: *${userInfo.nama_lengkap}*\n`;
+    message += `Status autentikasi: *BERHASIL LOGIN*\n`;
+    message += `Nama lengkap: *${userInfo.nama_lengkap}*\n`;
     message += `Username: ${userInfo.username}\n`;
-    message += `Level: ${userInfo.level}\n\n`;
+    message += `Level akses: ${userInfo.level}\n\n`;
     
     if (hasVillageCode) {
       const villageData = AuthService.getVillageData(chatId);
-      message += `🏘️ Kode Wilayah: \`${userInfo.villageCode}\`\n`;
-      message += `${villageData?.name || 'Tidak diketahui'}, ${villageData?.district_name || 'Tidak diketahui'}\n\n`;
-      message += `📸 Kirim foto Kartu Keluarga (KK) untuk memulai proses OCR.\n\n`;
+      message += `Kode wilayah yang telah diatur: \`${userInfo.villageCode}\`\n`;
+      message += `Lokasi: ${villageData?.name || 'Tidak diketahui'}, ${villageData?.district_name || 'Tidak diketahui'}\n\n`;
+      message += `Sistem siap memproses data KK. Silakan kirim foto Kartu Keluarga (KK) yang jelas dan tidak blur untuk memulai proses ekstraksi data otomatis.\n\n`;
     } else {
-      message += `❌ Kode wilayah belum di-set\n\n`;
-      message += `Silakan set kode wilayah terlebih dahulu dengan /kode-wilayah\n\n`;
+      message += `Status kode wilayah: *BELUM DIATUR*\n\n`;
+      message += `Sebelum dapat memproses data KK, Anda harus mengatur kode wilayah terlebih dahulu.\n`;
+      message += `Gunakan perintah: /kode-wilayah <kode-wilayah>\n`;
+      message += `Contoh: /kode-wilayah 33.01.06.2016\n\n`;
     }
   } else {
-    message += `Silakan login terlebih dahulu dengan perintah:\n`;
+    message += `Status autentikasi: *BELUM LOGIN*\n\n`;
+    message += `Untuk menggunakan sistem ini, Anda harus melakukan login terlebih dahulu.\n`;
+    message += `Format perintah login:\n`;
     message += `/login <username> <password>\n\n`;
-    message += `Contoh:\n`;
-    message += `/login admin password123\n\n`;
+    message += `Contoh penggunaan:\n`;
+    message += `/login admin123 password123\n`;
+    message += `/login kepala_desa kata_sandi_rahasia\n\n`;
   }
 
-  message += `*Perintah yang tersedia:*\n`;
-  message += `/start - Mulai bot\n`;
-  message += `/login - Login ke sistem\n`;
-  message += `/logout - Logout dari sistem\n`;
-  message += `/cek-session - Cek status login\n`;
-  message += `/kode-wilayah - Cek informasi kode wilayah\n`;
-  message += `/help - Bantuan penggunaan bot\n\n`;
+  message += `*Daftar perintah yang tersedia:*\n`;
+  message += `/start - Menampilkan informasi sistem dan status login\n`;
+  message += `/login - Melakukan autentikasi ke dalam sistem\n`;
+  message += `/logout - Keluar dari sistem\n`;
+  message += `/cek-session - Memeriksa status sesi login saat ini\n`;
+  message += `/kode-wilayah - Mengatur atau memeriksa kode wilayah\n`;
+  message += `/help - Menampilkan panduan lengkap penggunaan sistem\n\n`;
 
-  message += `*Cara penggunaan:*\n`;
-  message += `1. Login menggunakan akun SmartGov\n`;
-  message += `2. Kirim foto Kartu Keluarga (KK)\n`;
-  message += `3. Bot akan otomatis extract data menggunakan AI\n`;
-  message += `4. Data akan disimpan ke database SmartGov\n\n`;
+  message += `*Langkah-langkah penggunaan sistem:*\n`;
+  message += `1. Lakukan login menggunakan akun SmartGov yang valid\n`;
+  message += `2. Atur kode wilayah sesuai dengan wilayah kerja Anda\n`;
+  message += `3. Kirim foto Kartu Keluarga (KK) dengan kualitas yang baik\n`;
+  message += `4. Sistem akan mengekstrak data secara otomatis menggunakan AI\n`;
+  message += `5. Data hasil ekstraksi akan disimpan ke database SmartGov\n\n`;
 
-  message += `Powered by Google Gemini AI 🤖`;
+  message += `Sistem ini didukung oleh teknologi Google Gemini AI untuk akurasi ekstraksi data yang optimal.`;
 
   await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
 };

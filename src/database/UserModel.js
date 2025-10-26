@@ -4,7 +4,6 @@ const bcrypt = require('bcryptjs');
 const config = require('../config/env');
 
 class UserModel {
-  // Find user by username
   static async findByUsername(username) {
     try {
       const sql = 'SELECT * FROM users WHERE username = ? LIMIT 1';
@@ -21,7 +20,6 @@ class UserModel {
     }
   }
 
-  // Find user by ID
   static async findById(id) {
     try {
       const sql = 'SELECT * FROM users WHERE id = ? LIMIT 1';
@@ -38,7 +36,7 @@ class UserModel {
     }
   }
 
-  // Verify password
+  
   static async verifyPassword(plainPassword, hashedPassword) {
     try {
       return await bcrypt.compare(plainPassword, hashedPassword);
@@ -48,7 +46,7 @@ class UserModel {
     }
   }
 
-  // Authenticate user
+  
   static async authenticate(username, password) {
     try {
       const user = await this.findByUsername(username);
@@ -73,9 +71,9 @@ class UserModel {
     }
   }
 
-  // Session methods removed - no longer using database sessions
+  
 
-  // Get user permissions
+  
   static async getUserPermissions(userId) {
     try {
       const user = await this.findById(userId);
@@ -84,7 +82,7 @@ class UserModel {
         return null;
       }
 
-      // Return permissions based on user level
+      
       return {
         userId: user.id,
         username: user.username,
@@ -100,10 +98,10 @@ class UserModel {
     }
   }
 
-  // Update last login
+  
   static async updateLastLogin(userId) {
     try {
-      // Check if last_login column exists first
+      
       const checkSql = 'SHOW COLUMNS FROM users LIKE "last_login"';
       const columns = await db.query(checkSql);
       
@@ -111,7 +109,7 @@ class UserModel {
         const sql = 'UPDATE users SET last_login = NOW() WHERE id = ?';
         await db.query(sql, [userId]);
       } else {
-        // Column doesn't exist, just log and continue
+        
         logger.info('last_login column does not exist, skipping update');
       }
 
@@ -122,7 +120,7 @@ class UserModel {
     }
   }
 
-  // Get all users (for admin)
+  
   static async getAll() {
     try {
       const sql = 'SELECT id, username, name, user_type_id, created_at, last_login FROM users ORDER BY created_at DESC';

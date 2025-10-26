@@ -1,46 +1,41 @@
 const logger = require('./logger');
 
 class TextCleaner {
-  // Clean OCR text (remove extra spaces, normalize)
   static cleanOcrText(text) {
     if (!text || typeof text !== 'string') return '';
 
     return text
       .trim()
-      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-      .replace(/\n+/g, ' ') // Replace newlines with space
-      .replace(/\t+/g, ' ') // Replace tabs with space
-      .replace(/[^\x20-\x7E\u00A0-\uFFFF]/g, '') // Remove non-printable characters
+      .replace(/\s+/g, ' ')
+      .replace(/\n+/g, ' ')
+      .replace(/\t+/g, ' ')
+      .replace(/[^\x20-\x7E\u00A0-\uFFFF]/g, '')
       .trim();
   }
 
-  // Normalize name (proper capitalization)
   static normalizeName(name) {
     if (!name || typeof name !== 'string') return '';
 
-    // Clean first
     let cleaned = this.cleanOcrText(name);
 
-    // Convert to uppercase (Indonesian names are typically all caps on KK)
     cleaned = cleaned.toUpperCase();
 
-    // Handle common OCR mistakes
     cleaned = cleaned
-      .replace(/[0O]/g, 'O') // O vs 0
-      .replace(/[1I]/g, 'I') // I vs 1
-      .replace(/[5S]/g, 'S') // S vs 5
+      .replace(/[0O]/g, 'O')
+      .replace(/[1I]/g, 'I')
+      .replace(/[5S]/g, 'S')
       .trim();
 
     return cleaned;
   }
 
-  // Normalize gender
+  
   static normalizeGender(gender) {
     if (!gender || typeof gender !== 'string') return null;
 
     const cleaned = gender.toUpperCase().trim();
 
-    // Full forms
+    
     if (cleaned.includes('LAKI')) return 'L';
     if (cleaned.includes('PRIA')) return 'L';
     if (cleaned.includes('MALE')) return 'L';
@@ -49,11 +44,11 @@ class TextCleaner {
     if (cleaned.includes('WANITA')) return 'P';
     if (cleaned.includes('FEMALE')) return 'P';
 
-    // Short forms
+    
     if (cleaned === 'L' || cleaned === 'M') return 'L';
     if (cleaned === 'P' || cleaned === 'F') return 'P';
 
-    // Numbers from OCR errors
+    
     if (cleaned === '1') return 'L';
     if (cleaned === '2') return 'P';
 
@@ -61,7 +56,7 @@ class TextCleaner {
     return null;
   }
 
-  // Normalize religion
+  
   static normalizeReligion(religion) {
     if (!religion || typeof religion !== 'string') return '';
 
@@ -89,7 +84,7 @@ class TextCleaner {
     return this.cleanOcrText(religion);
   }
 
-  // Normalize education level
+  
   static normalizeEducation(education) {
     if (!education || typeof education !== 'string') return '';
 
@@ -123,7 +118,7 @@ class TextCleaner {
     return this.cleanOcrText(education);
   }
 
-  // Normalize marital status
+  
   static normalizeMaritalStatus(status) {
     if (!status || typeof status !== 'string') return '';
 
@@ -149,7 +144,7 @@ class TextCleaner {
     return this.cleanOcrText(status);
   }
 
-  // Normalize family relationship
+  
   static normalizeFamilyRelationship(relationship) {
     if (!relationship || typeof relationship !== 'string') return '';
 
@@ -183,17 +178,17 @@ class TextCleaner {
     return this.cleanOcrText(relationship);
   }
 
-  // Normalize occupation
+  
   static normalizeOccupation(occupation) {
     if (!occupation || typeof occupation !== 'string') return '';
 
     const cleaned = this.cleanOcrText(occupation);
 
-    // Convert to uppercase for Indonesian standard
+    
     return cleaned.toUpperCase();
   }
 
-  // Normalize citizenship
+  
   static normalizeCitizenship(citizenship) {
     if (!citizenship || typeof citizenship !== 'string') return 'WNI';
 
@@ -202,16 +197,16 @@ class TextCleaner {
     if (cleaned.includes('WNI') || cleaned.includes('INDONESIA')) return 'WNI';
     if (cleaned.includes('WNA') || cleaned.includes('ASING')) return 'WNA';
 
-    return 'WNI'; // Default to WNI
+    return 'WNI'; 
   }
 
-  // Clean and normalize address
+  
   static normalizeAddress(address) {
     if (!address || typeof address !== 'string') return '';
 
     let cleaned = this.cleanOcrText(address);
 
-    // Normalize common abbreviations
+    
     cleaned = cleaned
       .replace(/\bJL\b\.?/gi, 'Jalan')
       .replace(/\bRT\b\.?/gi, 'RT')
@@ -223,11 +218,11 @@ class TextCleaner {
     return cleaned;
   }
 
-  // Extract and normalize RT/RW
+  
   static extractRTRW(text) {
     if (!text || typeof text !== 'string') return null;
 
-    // Pattern: RT XXX/RW XXX or RT XXX / RW XXX
+    
     const pattern = /RT\s*[:\-\.]?\s*(\d+)\s*[\/\\]\s*RW\s*[:\-\.]?\s*(\d+)/i;
     const match = text.match(pattern);
 
@@ -237,7 +232,7 @@ class TextCleaner {
       return `${rt}/${rw}`;
     }
 
-    // Pattern: just numbers XXX/XXX
+    
     const simplePattern = /(\d{1,3})\s*[\/\\]\s*(\d{1,3})/;
     const simpleMatch = text.match(simplePattern);
 
@@ -250,7 +245,7 @@ class TextCleaner {
     return null;
   }
 
-  // Remove special characters but keep Indonesian characters
+  
   static removeSpecialChars(text) {
     if (!text || typeof text !== 'string') return '';
 
@@ -259,14 +254,14 @@ class TextCleaner {
       .trim();
   }
 
-  // Normalize NIK (ensure 16 digits)
+  
   static normalizeNIK(nik) {
     if (!nik) return null;
 
-    // Remove all non-digits
+    
     const cleaned = String(nik).replace(/\D/g, '');
 
-    // Must be exactly 16 digits
+    
     if (cleaned.length === 16) {
       return cleaned;
     }
@@ -275,14 +270,14 @@ class TextCleaner {
     return null;
   }
 
-  // Normalize KK number (ensure 16 digits)
+  
   static normalizeKK(kk) {
     if (!kk) return null;
 
-    // Remove all non-digits
+    
     const cleaned = String(kk).replace(/\D/g, '');
 
-    // Must be exactly 16 digits
+    
     if (cleaned.length === 16) {
       return cleaned;
     }
@@ -291,19 +286,19 @@ class TextCleaner {
     return null;
   }
 
-  // Normalize postal code (5 digits)
+  
   static normalizePostalCode(code) {
     if (!code) return null;
 
-    // Remove all non-digits
+    
     const cleaned = String(code).replace(/\D/g, '');
 
-    // Must be 5 digits
+    
     if (cleaned.length === 5) {
       return cleaned;
     }
 
-    // If less than 5, pad with zeros
+    
     if (cleaned.length > 0 && cleaned.length < 5) {
       return cleaned.padStart(5, '0');
     }

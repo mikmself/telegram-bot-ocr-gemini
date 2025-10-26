@@ -3,13 +3,13 @@ const path = require('path');
 const fs = require('fs');
 const config = require('../config/env');
 
-// Ensure log directory exists
+
 const logDir = config.logging.dir;
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
 
-// Define log format
+
 const logFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
   winston.format.errors({ stack: true }),
@@ -25,12 +25,12 @@ const logFormat = winston.format.combine(
   })
 );
 
-// Create logger instance
+
 const logger = winston.createLogger({
   level: config.logging.level,
   format: logFormat,
   transports: [
-    // Console transport
+    
     new winston.transports.Console({
       format: winston.format.combine(
         winston.format.colorize(),
@@ -38,25 +38,25 @@ const logger = winston.createLogger({
       )
     }),
 
-    // File transport - all logs
+    
     new winston.transports.File({
       filename: path.join(logDir, 'combined.log'),
-      maxsize: 10485760, // 10MB
+      maxsize: 10485760, 
       maxFiles: 5
     }),
 
-    // File transport - error logs only
+    
     new winston.transports.File({
       filename: path.join(logDir, 'error.log'),
       level: 'error',
-      maxsize: 10485760, // 10MB
+      maxsize: 10485760, 
       maxFiles: 5
     })
   ],
   exitOnError: false
 });
 
-// Add additional logging methods for convenience
+
 logger.bot = (chatId, message, metadata = {}) => {
   logger.info(message, { chatId, ...metadata });
 };

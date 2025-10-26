@@ -2,7 +2,7 @@ const db = require('../config/database');
 const logger = require('../utils/logger');
 
 class ResidentModel {
-  // Find resident by NIK
+  
   static async findByNIK(nik) {
     try {
       const sql = 'SELECT * FROM residents WHERE nik = ? LIMIT 1';
@@ -19,7 +19,7 @@ class ResidentModel {
     }
   }
 
-  // Find residents by family card number
+  
   static async findByFamilyCard(familyCardNumber) {
     try {
       const sql = `
@@ -36,7 +36,7 @@ class ResidentModel {
     }
   }
 
-  // Create new resident record
+  
   static async create(residentData) {
     try {
       const sql = `
@@ -117,7 +117,7 @@ class ResidentModel {
     }
   }
 
-  // Update resident record
+  
   static async update(nik, residentData) {
     try {
       const sql = `
@@ -192,7 +192,7 @@ class ResidentModel {
     }
   }
 
-  // Delete resident record
+  
   static async delete(nik) {
     try {
       const sql = 'DELETE FROM residents WHERE nik = ?';
@@ -207,7 +207,7 @@ class ResidentModel {
     }
   }
 
-  // Delete all residents by family card
+  
   static async deleteByFamilyCard(familyCardNumber) {
     try {
       const sql = 'DELETE FROM residents WHERE family_card_number = ?';
@@ -222,7 +222,7 @@ class ResidentModel {
     }
   }
 
-  // Search residents
+  
   static async search(criteria) {
     try {
       let sql = 'SELECT * FROM residents WHERE 1=1';
@@ -254,7 +254,7 @@ class ResidentModel {
     }
   }
 
-  // Get statistics
+  
   static async getStats() {
     try {
       const totalSql = 'SELECT COUNT(*) as total FROM residents WHERE is_active = 1';
@@ -284,7 +284,7 @@ class ResidentModel {
     }
   }
 
-  // Bulk create residents (for OCR batch insert)
+  
   static async bulkCreate(residentsData) {
     const connection = await db.getConnection();
 

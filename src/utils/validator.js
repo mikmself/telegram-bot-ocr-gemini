@@ -1,35 +1,30 @@
 const logger = require('./logger');
 
 class Validator {
-  // Validate NIK (16 digits)
   static isValidNIK(nik) {
     if (!nik) return false;
     const nikStr = String(nik).trim();
     return /^\d{16}$/.test(nikStr);
   }
 
-  // Validate KK number (16 digits)
   static isValidKK(kk) {
     if (!kk) return false;
     const kkStr = String(kk).trim();
     return /^\d{16}$/.test(kkStr);
   }
 
-  // Validate phone number
   static isValidPhone(phone) {
     if (!phone) return false;
     const phoneStr = String(phone).trim();
     return /^(\+62|62|0)[0-9]{8,12}$/.test(phoneStr);
   }
 
-  // Validate email
   static isValidEmail(email) {
     if (!email) return false;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email.trim());
   }
 
-  // Validate date (DD-MM-YYYY)
   static isValidDate(dateString) {
     if (!dateString) return false;
 
@@ -49,58 +44,48 @@ class Validator {
     return true;
   }
 
-  // Validate gender
   static isValidGender(gender) {
     if (!gender) return false;
     const normalized = gender.toUpperCase().trim();
     return ['L', 'P', 'LAKI-LAKI', 'PEREMPUAN'].includes(normalized);
   }
 
-  // Validate region code
   static isValidRegionCode(code) {
     if (!code) return false;
     let codeStr = String(code).trim();
     
-    // Remove dots if present (support format like 33.01.06.2016)
     codeStr = codeStr.replace(/\./g, '');
     
-    // Region codes can be 2, 4, 6, 10, or 13 digits
     return /^(\d{2}|\d{4}|\d{6}|\d{10}|\d{13})$/.test(codeStr);
   }
 
-  // Validate RT/RW format (XXX/XXX)
   static isValidRTRW(rtRw) {
     if (!rtRw) return false;
     return /^\d{3}\/\d{3}$/.test(rtRw.trim());
   }
 
-  // Validate postal code (5 digits)
   static isValidPostalCode(code) {
     if (!code) return false;
     const codeStr = String(code).trim();
     return /^\d{5}$/.test(codeStr);
   }
 
-  // Validate name (at least 2 characters, letters and spaces only)
   static isValidName(name) {
     if (!name) return false;
     const trimmed = name.trim();
     return trimmed.length >= 2 && /^[a-zA-Z\s.,'-]+$/.test(trimmed);
   }
 
-  // Validate username (alphanumeric, underscore, 3-30 chars)
   static isValidUsername(username) {
     if (!username) return false;
     return /^[a-zA-Z0-9_]{3,30}$/.test(username);
   }
 
-  // Validate password (min 6 characters)
   static isValidPassword(password) {
     if (!password) return false;
     return password.length >= 6;
   }
 
-  // Validate family data
   static validateFamilyData(data) {
     const errors = [];
 
@@ -126,7 +111,6 @@ class Validator {
     };
   }
 
-  // Validate resident data
   static validateResidentData(resident) {
     const errors = [];
 
@@ -156,18 +140,16 @@ class Validator {
     };
   }
 
-  // Sanitize input (remove dangerous characters)
   static sanitize(input) {
     if (typeof input !== 'string') return input;
 
     return input
       .trim()
-      .replace(/[<>]/g, '') // Remove < and >
-      .replace(/['"]/g, '') // Remove quotes
-      .substring(0, 1000); // Limit length
+      .replace(/[<>]/g, '')
+      .replace(/['"]/g, '')
+      .substring(0, 1000);
   }
 
-  // Validate and sanitize login credentials
   static validateLogin(username, password) {
     const errors = [];
 
@@ -184,7 +166,7 @@ class Validator {
       errors,
       sanitized: {
         username: this.sanitize(username),
-        password: password // Don't sanitize password
+        password: password
       }
     };
   }

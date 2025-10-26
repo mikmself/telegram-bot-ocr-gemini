@@ -14,13 +14,16 @@ module.exports = async (bot, msg) => {
   logger.info(`Photo received from chat ${chatId}`);
 
   try {
-    // Check authentication
     const isLoggedIn = AuthService.isLoggedIn(chatId);
 
     if (!isLoggedIn) {
       await bot.sendMessage(chatId, 
-        '❌ Anda harus login terlebih dahulu.\n\n' +
-        'Gunakan perintah:\n/login <username> <password>'
+        'Akses ditolak. Anda harus melakukan login terlebih dahulu.\n\n' +
+        'Untuk memproses foto Kartu Keluarga (KK), silakan login menggunakan perintah:\n' +
+        '/login <username> <password>\n\n' +
+        'Contoh penggunaan:\n' +
+        '/login admin123 password123\n' +
+        '/login kepala_desa kata_sandi_rahasia'
       );
       return;
     }
@@ -28,38 +31,36 @@ module.exports = async (bot, msg) => {
     const userInfo = AuthService.getUserInfo(chatId);
 
     if (!userInfo) {
-      await bot.sendMessage(chatId, '❌ Gagal mendapatkan informasi user. Silakan login ulang.');
+      await bot.sendMessage(chatId, 'Gagal mendapatkan informasi pengguna dari sistem.\n\nKemungkinan penyebab:\n- Sesi login telah berakhir\n- Terjadi kesalahan pada sistem\n- Data pengguna tidak valid\n\nSilakan lakukan login ulang menggunakan perintah /login untuk mengakses sistem kembali.');
       return;
     }
 
-    // Check if user has set village code
     if (!AuthService.hasVillageCode(chatId)) {
       await bot.sendMessage(chatId, 
-        '❌ Kode wilayah belum di-set.\n\n' +
-        'Silakan set kode wilayah terlebih dahulu dengan /kode-wilayah\n\n' +
-        'Kode wilayah diperlukan untuk menyimpan data KK ke wilayah yang benar.'
+        'Kode wilayah belum diatur dalam sistem.\n\n' +
+        'Sebelum dapat memproses foto Kartu Keluarga (KK), Anda harus mengatur kode wilayah terlebih dahulu.\n\n' +
+        'Gunakan perintah: /kode-wilayah <kode-wilayah>\n' +
+        'Contoh: /kode-wilayah 33.01.06.2016\n\n' +
+        'Kode wilayah diperlukan untuk memastikan data KK disimpan ke wilayah yang benar dalam database SmartGov.'
       );
       return;
     }
 
-    // Send initial processing message
     const statusMsg = await bot.sendMessage(
       chatId,
-      '📸 Foto diterima!\n\n' +
-      '⏳ Memproses gambar...',
+      'Foto Kartu Keluarga (KK) telah diterima oleh sistem.\n\n' +
+      'Sedang memproses gambar dengan teknologi AI. Mohon tunggu sebentar...',
       { reply_to_message_id: messageId }
     );
 
-    // Get photo file
-    const photo = msg.photo[msg.photo.length - 1]; // Get highest resolution
+    const photo = msg.photo[msg.photo.length - 1];
     const fileId = photo.file_id;
 
     logger.info(`Processing photo file_id: ${fileId}`);
 
-    // Download photo
     await bot.editMessageText(
-      '📸 Foto diterima!\n\n' +
-      '⬇️ Mengunduh gambar...',
+      'Foto Kartu Keluarga (KK) telah diterima oleh sistem.\n\n' +
+      'Sedang mengunduh gambar dari server Telegram...',
       {
         chat_id: chatId,
         message_id: statusMsg.message_id
@@ -68,9 +69,8 @@ module.exports = async (bot, msg) => {
 
     const file = await bot.getFile(fileId);
     const filePath = file.file_path;
-    const fileUrl = `https://api.telegram.org/file/bot${config.telegram.token}/${filePath}`;
+    const fileUrl = `https:
 
-    // Download to temp directory
     const tempDir = config.upload.tempDir;
     await fs.mkdir(tempDir, { recursive: true });
 
@@ -80,11 +80,10 @@ module.exports = async (bot, msg) => {
     const fileStream = await bot.downloadFile(fileId, tempDir);
     logger.info(`Photo downloaded to: ${localFilePath}`);
 
-    // Process with Gemini OCR
     await bot.editMessageText(
-      '📸 Foto diterima!\n\n' +
-      '🤖 Memproses dengan Gemini AI...\n' +
-      'Ini mungkin memakan waktu 5-15 detik.',
+      'Foto Kartu Keluarga (KK) telah diterima oleh sistem.\n\n' +
+      'Sedang memproses dengan teknologi Google Gemini AI...\n' +
+      'Proses ekstraksi data membutuhkan waktu 5-15 detik. Mohon tunggu sebentar.',
       {
         chat_id: chatId,
         message_id: statusMsg.message_id
@@ -97,9 +96,14 @@ module.exports = async (bot, msg) => {
       logger.error(`OCR failed: ${ocrResult.error}`);
 
       await bot.editMessageText(
-        '❌ *Gagal memproses gambar*\n\n' +
-        `Error: ${ocrResult.error}\n\n` +
-        'Silakan coba lagi dengan foto yang lebih jelas.',
+        'Gagal memproses gambar Kartu Keluarga (KK).\n\n' +
+        `Pesan kesalahan: ${ocrResult.error}\n\n` +
+        'Kemungkinan penyebab:\n' +
+        '- Kualitas foto tidak memadai (terlalu blur atau gelap)\n' +
+        '- Format file tidak didukung\n' +
+        '- Terjadi gangguan pada sistem AI\n' +
+        '- Foto tidak menampilkan Kartu Keluarga (KK) yang valid\n\n' +
+        'Silakan coba lagi dengan foto yang lebih jelas dan pastikan seluruh bagian KK terlihat dengan baik.',
         {
           chat_id: chatId,
           message_id: statusMsg.message_id,
@@ -107,7 +111,6 @@ module.exports = async (bot, msg) => {
         }
       );
 
-      // Clean up
       await fs.unlink(fileStream).catch(() => {});
 
       return;
@@ -115,17 +118,21 @@ module.exports = async (bot, msg) => {
 
     logger.info('OCR processing completed successfully');
 
-    // Validate OCR result
     const validation = GeminiOcrService.validateOcrResult(ocrResult);
 
     if (!validation.valid) {
       logger.warn('OCR validation failed:', validation.errors);
 
       await bot.editMessageText(
-        '⚠️ *Data tidak lengkap*\n\n' +
-        'Hasil OCR tidak memenuhi kriteria:\n' +
-        validation.errors.map(e => `• ${e}`).join('\n') + '\n\n' +
-        'Silakan coba lagi dengan foto yang lebih jelas.',
+        'Data yang diekstrak tidak lengkap atau tidak valid.\n\n' +
+        'Kriteria yang tidak terpenuhi:\n' +
+        validation.errors.map(e => `- ${e}`).join('\n') + '\n\n' +
+        'Kemungkinan penyebab:\n' +
+        '- Foto tidak jelas atau terpotong\n' +
+        '- Kartu Keluarga (KK) tidak lengkap\n' +
+        '- Kualitas gambar terlalu rendah\n' +
+        '- Pencahayaan tidak merata\n\n' +
+        'Silakan ambil foto ulang dengan kualitas yang lebih baik dan pastikan seluruh bagian KK terlihat jelas.',
         {
           chat_id: chatId,
           message_id: statusMsg.message_id,
@@ -133,53 +140,51 @@ module.exports = async (bot, msg) => {
         }
       );
 
-      // Clean up
       await fs.unlink(fileStream).catch(() => {});
 
       return;
     }
 
-    // Show extracted data
     const data = ocrResult.parsedData;
 
-    let extractedMessage = '✅ *Data berhasil diekstrak!*\n\n';
-    extractedMessage += `*Nomor KK:* \`${data.nomor_kk}\`\n`;
-    extractedMessage += `*Kepala Keluarga:* ${data.nama_kepala_keluarga}\n`;
-    extractedMessage += `*Alamat:* ${data.alamat}\n`;
+    let extractedMessage = 'Data berhasil diekstrak dari Kartu Keluarga (KK).\n\n';
+    extractedMessage += `Informasi Kartu Keluarga:\n`;
+    extractedMessage += `Nomor KK: \`${data.nomor_kk}\`\n`;
+    extractedMessage += `Nama Kepala Keluarga: ${data.nama_kepala_keluarga}\n`;
+    extractedMessage += `Alamat: ${data.alamat}\n`;
 
     if (data.rt_rw) {
-      extractedMessage += `*RT/RW:* ${data.rt_rw}\n`;
+      extractedMessage += `RT/RW: ${data.rt_rw}\n`;
     }
 
     if (data.desa_kelurahan) {
-      extractedMessage += `*Desa/Kelurahan:* ${data.desa_kelurahan}\n`;
+      extractedMessage += `Desa/Kelurahan: ${data.desa_kelurahan}\n`;
     }
 
     if (data.kecamatan) {
-      extractedMessage += `*Kecamatan:* ${data.kecamatan}\n`;
+      extractedMessage += `Kecamatan: ${data.kecamatan}\n`;
     }
 
     if (data.kabupaten_kota) {
-      extractedMessage += `*Kabupaten/Kota:* ${data.kabupaten_kota}\n`;
+      extractedMessage += `Kabupaten/Kota: ${data.kabupaten_kota}\n`;
     }
 
     if (data.provinsi) {
-      extractedMessage += `*Provinsi:* ${data.provinsi}\n`;
+      extractedMessage += `Provinsi: ${data.provinsi}\n`;
     }
 
-    extractedMessage += `\n*Jumlah Anggota Keluarga:* ${data.table.length} orang\n\n`;
+    extractedMessage += `\nJumlah Anggota Keluarga: ${data.table.length} orang\n\n`;
 
-    // Show first 3 members
-    extractedMessage += '*Anggota Keluarga:*\n';
+    extractedMessage += 'Daftar Anggota Keluarga:\n';
     data.table.slice(0, 3).forEach((member, index) => {
-      extractedMessage += `${index + 1}. ${member.nama_lengkap} (${member.nik})\n`;
+      extractedMessage += `${index + 1}. ${member.nama_lengkap} (NIK: ${member.nik})\n`;
     });
 
     if (data.table.length > 3) {
-      extractedMessage += `... dan ${data.table.length - 3} orang lainnya\n`;
+      extractedMessage += `... dan ${data.table.length - 3} anggota keluarga lainnya\n`;
     }
 
-    extractedMessage += '\n⏳ Menyimpan ke database...';
+    extractedMessage += '\nSedang menyimpan data ke database SmartGov...';
 
     await bot.editMessageText(extractedMessage, {
       chat_id: chatId,
@@ -187,78 +192,74 @@ module.exports = async (bot, msg) => {
       parse_mode: 'Markdown'
     });
 
-    // Auto-create family and residents
     const createResult = await AutoCreateService.autoCreate(data, userInfo.userId);
 
-    // Clean up temp file
     await fs.unlink(fileStream).catch(() => {});
 
     if (createResult.success) {
       logger.info('Auto-create successful:', createResult.data);
 
-      let successMessage = '✅ *Data berhasil disimpan!*\n\n';
-      successMessage += `*Nomor KK:* \`${data.nomor_kk}\`\n`;
-      successMessage += `*Kepala Keluarga:* ${data.nama_kepala_keluarga}\n`;
-      successMessage += `*Alamat:* ${data.alamat}\n`;
+      let successMessage = 'Data Kartu Keluarga (KK) berhasil disimpan ke database SmartGov.\n\n';
+      successMessage += `Informasi Kartu Keluarga:\n`;
+      successMessage += `Nomor KK: \`${data.nomor_kk}\`\n`;
+      successMessage += `Nama Kepala Keluarga: ${data.nama_kepala_keluarga}\n`;
+      successMessage += `Alamat: ${data.alamat}\n`;
       
       if (data.rt_rw) {
-        successMessage += `*RT/RW:* ${data.rt_rw}\n`;
+        successMessage += `RT/RW: ${data.rt_rw}\n`;
       }
       
-      successMessage += `*Desa:* ${data.desa_kelurahan}\n`;
-      successMessage += `*Kecamatan:* ${data.kecamatan}\n`;
-      successMessage += `*Kabupaten:* ${data.kabupaten_kota}\n`;
-      successMessage += `*Provinsi:* ${data.provinsi}\n\n`;
+      successMessage += `Desa/Kelurahan: ${data.desa_kelurahan}\n`;
+      successMessage += `Kecamatan: ${data.kecamatan}\n`;
+      successMessage += `Kabupaten/Kota: ${data.kabupaten_kota}\n`;
+      successMessage += `Provinsi: ${data.provinsi}\n\n`;
       
-      // Summary
       if (createResult.isNewFamily) {
-        successMessage += `🆕 *KK Baru*\n`;
+        successMessage += `Status: Kartu Keluarga Baru\n`;
       } else {
-        successMessage += `📝 *KK Sudah Ada - Update Anggota*\n`;
+        successMessage += `Status: Kartu Keluarga Sudah Ada - Update Anggota\n`;
       }
       
-      successMessage += `*Total Anggota dari OCR:* ${data.table.length} orang\n`;
-      successMessage += `*Anggota Baru Ditambahkan:* ${createResult.data.residentCount} orang\n`;
+      successMessage += `Total Anggota dari OCR: ${data.table.length} orang\n`;
+      successMessage += `Anggota Baru Ditambahkan: ${createResult.data.residentCount} orang\n`;
       
       if (createResult.data.skippedCount > 0) {
-        successMessage += `*Anggota Sudah Ada (Skip):* ${createResult.data.skippedCount} orang\n`;
+        successMessage += `Anggota Sudah Ada (Dilewati): ${createResult.data.skippedCount} orang\n`;
       }
       
       if (createResult.data.invalidCount > 0) {
-        successMessage += `*Anggota Tidak Valid (Skip):* ${createResult.data.invalidCount} orang\n`;
+        successMessage += `Anggota Tidak Valid (Dilewati): ${createResult.data.invalidCount} orang\n`;
       }
       
       successMessage += `\n`;
       
-      // Display all members with details
-      successMessage += `*📋 Detail Anggota Keluarga:*\n\n`;
+      successMessage += `Detail Anggota Keluarga:\n\n`;
       
       data.table.forEach((member, index) => {
-        // Check if this member was skipped or invalid
         const wasSkipped = createResult.data.skippedResidents.find(s => s.nik === normalizeNIK(member.nik));
         const wasInvalid = createResult.data.invalidResidents.find(i => i.nik === normalizeNIK(member.nik));
         
-        let status = '✅';
+        let status = 'BERHASIL';
         if (wasSkipped) {
-          status = '⏭️ (Sudah Ada)';
+          status = 'SUDAH ADA';
         } else if (wasInvalid) {
-          status = '❌ (Tidak Valid)';
+          status = 'TIDAK VALID';
         }
         
-        successMessage += `${status} *${index + 1}. ${member.nama_lengkap}*\n`;
+        successMessage += `${index + 1}. ${member.nama_lengkap} (${status})\n`;
         successMessage += `   NIK: \`${member.nik}\`\n`;
-        successMessage += `   Tempat/Tgl Lahir: ${member.tempat_lahir}, ${member.tanggal_lahir}\n`;
+        successMessage += `   Tempat/Tanggal Lahir: ${member.tempat_lahir}, ${member.tanggal_lahir}\n`;
         successMessage += `   Jenis Kelamin: ${member.jenis_kelamin}\n`;
         successMessage += `   Agama: ${member.agama}\n`;
         successMessage += `   Pendidikan: ${member.pendidikan}\n`;
         successMessage += `   Pekerjaan: ${member.jenis_pekerjaan}\n`;
         successMessage += `   Status Perkawinan: ${member.status_perkawinan}\n`;
-        successMessage += `   Hub. Keluarga: ${member.status_hubungan_dalam_keluarga}\n`;
+        successMessage += `   Hubungan dalam Keluarga: ${member.status_hubungan_dalam_keluarga}\n`;
         
         if (wasSkipped) {
-          successMessage += `   ℹ️ Alasan Skip: ${wasSkipped.reason}\n`;
+          successMessage += `   Alasan Dilewati: ${wasSkipped.reason}\n`;
         } else if (wasInvalid) {
-          successMessage += `   ℹ️ Alasan Invalid: ${wasInvalid.reason}\n`;
+          successMessage += `   Alasan Tidak Valid: ${wasInvalid.reason}\n`;
         }
         
         if (member.nama_ayah && !wasSkipped && !wasInvalid) {
@@ -271,10 +272,11 @@ module.exports = async (bot, msg) => {
         successMessage += `\n`;
       });
       
-      successMessage += `\n*⏱ Waktu Proses:* ${Math.round(ocrResult.processingTime / 1000)} detik\n`;
-      successMessage += `*📊 Akurasi:* ${ocrResult.confidence}%\n\n`;
+      successMessage += `\nInformasi Pemrosesan:\n`;
+      successMessage += `Waktu Proses: ${Math.round(ocrResult.processingTime / 1000)} detik\n`;
+      successMessage += `Tingkat Akurasi: ${ocrResult.confidence}%\n\n`;
       successMessage += `Diproses oleh: ${userInfo.nama_lengkap}\n`;
-      successMessage += `Powered by Google Gemini AI 🤖`;
+      successMessage += `Dibantu oleh teknologi Google Gemini AI`;
 
       await bot.editMessageText(successMessage, {
         chat_id: chatId,
@@ -286,9 +288,10 @@ module.exports = async (bot, msg) => {
       logger.warn('Family already exists:', data.nomor_kk);
 
       await bot.editMessageText(
-        '⚠️ *KK sudah terdaftar*\n\n' +
-        `Nomor KK: \`${data.nomor_kk}\` sudah ada dalam database.\n\n` +
-        'Jika ingin memperbarui data, hubungi administrator.',
+        'Kartu Keluarga (KK) sudah terdaftar dalam database.\n\n' +
+        `Nomor KK: \`${data.nomor_kk}\` sudah ada dalam sistem SmartGov.\n\n` +
+        'Data yang diekstrak berhasil, namun tidak dapat disimpan karena KK sudah terdaftar.\n\n' +
+        'Jika Anda ingin memperbarui data KK yang sudah ada, silakan hubungi administrator sistem untuk bantuan lebih lanjut.',
         {
           chat_id: chatId,
           message_id: statusMsg.message_id,
@@ -300,10 +303,14 @@ module.exports = async (bot, msg) => {
       logger.error('Auto-create failed:', createResult.error);
 
       await bot.editMessageText(
-        '❌ *Gagal menyimpan data*\n\n' +
-        `Error: ${createResult.message}\n\n` +
-        'Data berhasil diekstrak tetapi gagal disimpan ke database.\n' +
-        'Silakan hubungi administrator.',
+        'Gagal menyimpan data ke database SmartGov.\n\n' +
+        `Pesan kesalahan: ${createResult.message}\n\n` +
+        'Data berhasil diekstrak dari foto KK, namun terjadi kesalahan saat menyimpan ke database.\n\n' +
+        'Kemungkinan penyebab:\n' +
+        '- Koneksi ke database bermasalah\n' +
+        '- Server sedang dalam pemeliharaan\n' +
+        '- Terjadi gangguan pada sistem penyimpanan\n\n' +
+        'Silakan hubungi administrator sistem untuk bantuan lebih lanjut.',
         {
           chat_id: chatId,
           message_id: statusMsg.message_id,
@@ -317,8 +324,13 @@ module.exports = async (bot, msg) => {
 
     await bot.sendMessage(
       chatId,
-      '❌ Terjadi kesalahan saat memproses foto.\n\n' +
-      'Silakan coba lagi atau hubungi administrator.',
+      'Terjadi kesalahan sistem saat memproses foto Kartu Keluarga (KK).\n\n' +
+      'Kemungkinan penyebab:\n' +
+      '- Koneksi ke server bermasalah\n' +
+      '- Server sedang dalam pemeliharaan\n' +
+      '- Terjadi gangguan pada sistem AI\n' +
+      '- File foto tidak dapat diproses\n\n' +
+      'Silakan coba lagi dalam beberapa saat. Jika masalah berlanjut, hubungi administrator sistem untuk bantuan lebih lanjut.',
       { reply_to_message_id: messageId }
     );
   }

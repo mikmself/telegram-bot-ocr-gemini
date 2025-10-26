@@ -5,21 +5,17 @@ const config = require('../config/env');
 
 class AuthService {
   constructor() {
-    // In-memory session storage
     this.sessions = new Map();
     
-    // Cleanup expired sessions every hour
     setInterval(() => {
       this.cleanupExpiredSessions();
     }, 60 * 60 * 1000);
   }
 
-  // Login user
   async login(chatId, username, password) {
     try {
       logger.info(`Login attempt for user: ${username}, chat: ${chatId}`);
 
-      // Authenticate user
       const user = await UserModel.authenticate(username, password);
 
       if (!user) {
@@ -30,10 +26,8 @@ class AuthService {
         };
       }
 
-      // Update last login
       await UserModel.updateLastLogin(user.id);
 
-      // Create session
       const session = {
         userId: user.id,
         username: user.username,
@@ -45,7 +39,6 @@ class AuthService {
         lastActivity: new Date()
       };
 
-      // Store session
       this.sessions.set(chatId, session);
 
       logger.info(`Login successful for user: ${username}, session created for chat: ${chatId}`);
@@ -70,7 +63,6 @@ class AuthService {
     }
   }
 
-  // Logout user
   async logout(chatId) {
     try {
       logger.info(`Logout for chat: ${chatId}`);
@@ -100,7 +92,6 @@ class AuthService {
     }
   }
 
-  // Check if user is logged in
   isLoggedIn(chatId) {
     const session = this.sessions.get(chatId);
     
@@ -108,10 +99,9 @@ class AuthService {
       return false;
     }
 
-    // Check session expiration (24 hours)
     const now = new Date();
     const sessionAge = now - session.lastActivity;
-    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+    const maxAge = 24 * 60 * 60 * 1000;
 
     if (sessionAge > maxAge) {
       this.sessions.delete(chatId);
@@ -119,12 +109,10 @@ class AuthService {
       return false;
     }
 
-    // Update last activity
     session.lastActivity = now;
     return true;
   }
 
-  // Get current session
   getSession(chatId) {
     if (!this.isLoggedIn(chatId)) {
       return null;
@@ -133,7 +121,6 @@ class AuthService {
     return this.sessions.get(chatId);
   }
 
-  // Get user info from session
   getUserInfo(chatId) {
     const session = this.getSession(chatId);
     
@@ -153,7 +140,6 @@ class AuthService {
     };
   }
 
-  // Set village code
   setVillageCode(chatId, villageCode, villageData) {
     const session = this.getSession(chatId);
     if (!session) {
@@ -168,25 +154,21 @@ class AuthService {
     return true;
   }
 
-  // Get village code
   getVillageCode(chatId) {
     const session = this.getSession(chatId);
     return session ? session.villageCode : null;
   }
 
-  // Get village data
   getVillageData(chatId) {
     const session = this.getSession(chatId);
     return session ? session.villageData : null;
   }
 
-  // Check if user has village code
   hasVillageCode(chatId) {
     const session = this.getSession(chatId);
     return session && session.villageCode !== null;
   }
 
-  // Require authentication
   requireAuth(chatId) {
     if (this.isLoggedIn(chatId)) {
       return {
@@ -201,10 +183,9 @@ class AuthService {
     };
   }
 
-  // Cleanup expired sessions
   cleanupExpiredSessions() {
     const now = new Date();
-    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+    const maxAge = 24 * 60 * 60 * 1000;
     let removedCount = 0;
 
     for (const [chatId, session] of this.sessions.entries()) {
@@ -220,7 +201,6 @@ class AuthService {
     }
   }
 
-  // Get session stats
   getSessionStats() {
     const now = new Date();
     const maxAge = 24 * 60 * 60 * 1000;
@@ -245,5 +225,4 @@ class AuthService {
   }
 }
 
-// Export singleton instance
 module.exports = new AuthService();

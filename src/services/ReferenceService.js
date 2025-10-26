@@ -3,7 +3,7 @@ const logger = require('../utils/logger');
 
 class ReferenceService {
   constructor() {
-    // Cache for reference data
+    
     this.cache = {
       religions: null,
       educations: null,
@@ -15,7 +15,7 @@ class ReferenceService {
       ageCategories: null
     };
 
-    // Fallback data (if database is not available)
+    
     this.fallbackData = {
       religions: [
         { id: 1, name: 'Islam' },
@@ -101,9 +101,9 @@ class ReferenceService {
     };
   }
 
-  // ===================================
-  // RELIGION METHODS
-  // ===================================
+  
+  
+  
 
   async getReligions() {
     if (this.cache.religions) {
@@ -127,21 +127,21 @@ class ReferenceService {
     const religions = await this.getReligions();
     const normalized = name.toUpperCase().trim();
 
-    // Direct match
+    
     let religion = religions.find(r => r.name.toUpperCase() === normalized);
     if (religion) return religion.id;
 
-    // Partial match
+    
     religion = religions.find(r => r.name.toUpperCase().includes(normalized) || normalized.includes(r.name.toUpperCase()));
     if (religion) return religion.id;
 
-    // Default to Islam (id: 1)
+    
     return 1;
   }
 
-  // ===================================
-  // EDUCATION METHODS
-  // ===================================
+  
+  
+  
 
   async getEducations() {
     if (this.cache.educations) {
@@ -165,7 +165,7 @@ class ReferenceService {
     const educations = await this.getEducations();
     const normalized = name.toUpperCase().trim();
 
-    // Mapping untuk normalisasi
+    
     const educationMap = {
       'TIDAK': 'TIDAK/BELUM SEKOLAH',
       'BELUM': 'TIDAK/BELUM SEKOLAH',
@@ -185,31 +185,31 @@ class ReferenceService {
       'S3': 'STRATA III'
     };
 
-    // Try mapping first
+    
     const mappedName = educationMap[normalized];
     if (mappedName) {
       const education = educations.find(e => e.name.toUpperCase() === mappedName);
       if (education) return education.id;
     }
 
-    // Direct match
+    
     let education = educations.find(e => e.name.toUpperCase() === normalized);
     if (education) return education.id;
 
-    // Partial match
+    
     education = educations.find(e =>
       e.name.toUpperCase().includes(normalized) ||
       normalized.includes(e.name.toUpperCase())
     );
     if (education) return education.id;
 
-    // Default to TIDAK/BELUM SEKOLAH (id: 1)
+    
     return 1;
   }
 
-  // ===================================
-  // OCCUPATION METHODS
-  // ===================================
+  
+  
+  
 
   async getOccupations() {
     if (this.cache.occupations) {
@@ -233,11 +233,11 @@ class ReferenceService {
     const occupations = await this.getOccupations();
     const normalized = name.toUpperCase().trim();
 
-    // Direct match
+    
     let occupation = occupations.find(o => o.name.toUpperCase() === normalized);
     if (occupation) return occupation.id;
 
-    // Partial match
+    
     occupation = occupations.find(o =>
       o.name.toUpperCase().includes(normalized) ||
       normalized.includes(o.name.toUpperCase())
@@ -247,9 +247,9 @@ class ReferenceService {
     return null;
   }
 
-  // ===================================
-  // MARITAL STATUS METHODS
-  // ===================================
+  
+  
+  
 
   async getMaritalStatuses() {
     if (this.cache.maritalStatuses) {
@@ -273,24 +273,24 @@ class ReferenceService {
     const statuses = await this.getMaritalStatuses();
     const normalized = name.toUpperCase().trim();
 
-    // Direct match
+    
     let status = statuses.find(s => s.name.toUpperCase() === normalized);
     if (status) return status.id;
 
-    // Partial match
+    
     status = statuses.find(s =>
       s.name.toUpperCase().includes(normalized) ||
       normalized.includes(s.name.toUpperCase())
     );
     if (status) return status.id;
 
-    // Default to BELUM KAWIN (id: 1)
+    
     return 1;
   }
 
-  // ===================================
-  // BLOOD TYPE METHODS
-  // ===================================
+  
+  
+  
 
   async getBloodTypes() {
     if (this.cache.bloodTypes) {
@@ -318,9 +318,9 @@ class ReferenceService {
     return bloodType ? bloodType.id : null;
   }
 
-  // ===================================
-  // CITIZENSHIP METHODS
-  // ===================================
+  
+  
+  
 
   async getCitizenships() {
     if (this.cache.citizenships) {
@@ -339,18 +339,18 @@ class ReferenceService {
   }
 
   async getCitizenshipId(name) {
-    if (!name) return 1; // Default to WNI
+    if (!name) return 1; 
 
     const citizenships = await this.getCitizenships();
     const normalized = name.toUpperCase().trim();
 
     const citizenship = citizenships.find(c => c.name.toUpperCase() === normalized);
-    return citizenship ? citizenship.id : 1; // Default to WNI (id: 1)
+    return citizenship ? citizenship.id : 1; 
   }
 
-  // ===================================
-  // FAMILY RELATIONSHIP METHODS
-  // ===================================
+  
+  
+  
 
   async getFamilyRelationships() {
     if (this.cache.familyRelationships) {
@@ -374,7 +374,7 @@ class ReferenceService {
     const relationships = await this.getFamilyRelationships();
     const normalized = name.toUpperCase().trim();
 
-    // Mapping untuk normalisasi
+    
     const relationshipMap = {
       'KEPALA': 'KEPALA KELUARGA',
       'KK': 'KEPALA KELUARGA',
@@ -384,18 +384,18 @@ class ReferenceService {
       'LAIN': 'LAINNYA'
     };
 
-    // Try mapping first
+    
     const mappedName = relationshipMap[normalized];
     if (mappedName) {
       const relationship = relationships.find(r => r.name.toUpperCase() === mappedName);
       if (relationship) return relationship.id;
     }
 
-    // Direct match
+    
     let relationship = relationships.find(r => r.name.toUpperCase() === normalized);
     if (relationship) return relationship.id;
 
-    // Partial match
+    
     relationship = relationships.find(r =>
       r.name.toUpperCase().includes(normalized) ||
       normalized.includes(r.name.toUpperCase())
@@ -405,9 +405,9 @@ class ReferenceService {
     return null;
   }
 
-  // ===================================
-  // AGE CATEGORY METHODS
-  // ===================================
+  
+  
+  
 
   async getAgeCategories() {
     if (this.cache.ageCategories) {
@@ -434,9 +434,9 @@ class ReferenceService {
     return category ? category.id : null;
   }
 
-  // ===================================
-  // UTILITY METHODS
-  // ===================================
+  
+  
+  
 
   async getAllReferences() {
     return {
