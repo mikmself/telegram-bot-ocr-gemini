@@ -16,10 +16,10 @@ const cekSessionCommand = async (bot, msg) => {
         'Status autentikasi: BELUM LOGIN\n\n' +
         'Anda belum melakukan login ke dalam sistem.\n\n' +
         'Untuk mengakses fitur ini, silakan login terlebih dahulu menggunakan perintah:\n' +
-        '/login <username> <password>\n\n' +
+        '/login username password\n\n' +
         'Contoh penggunaan:\n' +
         '/login admin123 password123\n' +
-        '/login kepala_desa kata_sandi_rahasia'
+        '/login kepala\\_desa kata\\_sandi\\_rahasia'
       );
       return;
     }
@@ -82,17 +82,19 @@ const helpCommand = async (bot, msg) => {
 
   message += `Perintah Autentikasi:\n`;
   message += `/start - Menampilkan informasi sistem dan status login\n`;
-  message += `/login <username> <password> - Melakukan autentikasi ke dalam sistem\n`;
+  message += `/login username password - Melakukan autentikasi ke dalam sistem\n`;
   message += `/logout - Keluar dari sistem dan mengakhiri sesi\n`;
+  message += `/stop - Menghentikan bot dan keluar dari sistem\n`;
   message += `/cek-session - Memeriksa status sesi login saat ini\n\n`;
 
   message += `Perintah Utilitas:\n`;
-  message += `/kode-wilayah <kode> - Mengatur atau memeriksa kode wilayah kerja\n`;
+  message += `/kode-wilayah kode - Mengatur atau memeriksa kode wilayah kerja\n`;
   message += `/help - Menampilkan panduan lengkap penggunaan sistem\n\n`;
 
   message += `Langkah-langkah Menggunakan Sistem OCR:\n`;
   message += `1. Lakukan login menggunakan akun SmartGov yang valid\n`;
   message += `2. Atur kode wilayah sesuai dengan wilayah kerja Anda\n`;
+  message += `   Gunakan: /kode-wilayah kode_wilayah\n`;
   message += `3. Kirim foto Kartu Keluarga (KK) dengan kualitas yang baik\n`;
   message += `4. Sistem akan mengekstrak data secara otomatis menggunakan AI\n`;
   message += `5. Data hasil ekstraksi akan disimpan ke database SmartGov\n\n`;
@@ -106,7 +108,7 @@ const helpCommand = async (bot, msg) => {
   message += `- Posisikan kamera tegak lurus dengan KK untuk hasil optimal\n\n`;
 
   message += `Informasi Teknis Sistem:\n`;
-  message += `- Mesin OCR: Google Gemini 1.5 Flash\n`;
+  message += `- Mesin OCR: Google Gemini 2.5 Flash\n`;
   message += `- Tingkat akurasi: 90-95%\n`;
   message += `- Waktu pemrosesan: 5-15 detik per foto\n`;
   message += `- Database: MySQL (SmartGov)\n`;

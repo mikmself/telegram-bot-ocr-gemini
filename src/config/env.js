@@ -28,7 +28,7 @@ module.exports = {
   },
 
   regionApi: {
-    url: process.env.REGION_API_URL || 'https:
+    url: process.env.REGION_API_URL || 'https://api.example.com',
     key: process.env.REGION_API_KEY
   },
 

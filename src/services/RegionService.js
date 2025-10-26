@@ -22,59 +22,58 @@ class RegionService {
     try {
       logger.info(`Fetching region data for code: ${code}`);
 
-      
+
       let response;
-      
+
       if (code.length === 2) {
-        
+
         response = await this.client.get(`/provinces/${code}`);
       } else if (code.length === 4) {
-        
-        const provinces = await this.client.get('/provinces');
-        if (provinces.data && provinces.data.data) {
-          for (const province of provinces.data.data) {
-            try {
-              response = await this.client.get(`/provinces/${province.code}/regencies`);
-              if (response.data && response.data.data) {
-                const regency = response.data.data.find(r => r.code === code);
-                if (regency) {
-                  response.data = { success: true, data: regency };
-                  break;
-                }
-              }
-            } catch (e) {
-              
+
+        logger.info(`Searching for regency with code: ${code}`);
+        try {
+
+          response = await this.client.get('/regencies', {
+            params: { search: code }
+          });
+
+          if (response.data && response.data.data && response.data.data.length > 0) {
+            const regency = response.data.data.find(r => r.code === code);
+            if (regency) {
+              response.data = { success: true, data: regency };
+            } else {
+
+              response.data = { success: false };
             }
+          } else {
+            response.data = { success: false };
           }
+        } catch (error) {
+          logger.error(`Error fetching regency ${code}:`, error.message);
+          response = { data: { success: false } };
         }
       } else if (code.length === 6) {
-        
-        const provinces = await this.client.get('/provinces');
-        if (provinces.data && provinces.data.data) {
-          for (const province of provinces.data.data) {
-            try {
-              const regencies = await this.client.get(`/provinces/${province.code}/regencies`);
-              if (regencies.data && regencies.data.data) {
-                for (const regency of regencies.data.data) {
-                  try {
-                    response = await this.client.get(`/regencies/${regency.code}/districts`);
-                    if (response.data && response.data.data) {
-                      const district = response.data.data.find(d => d.code === code);
-                      if (district) {
-                        response.data = { success: true, data: district };
-                        break;
-                      }
-                    }
-                  } catch (e) {
-                    
-                  }
-                }
-                if (response && response.data && response.data.success) break;
-              }
-            } catch (e) {
-              
+
+        logger.info(`Searching for district with code: ${code}`);
+        try {
+
+          response = await this.client.get('/districts', {
+            params: { search: code }
+          });
+
+          if (response.data && response.data.data && response.data.data.length > 0) {
+            const district = response.data.data.find(d => d.code === code);
+            if (district) {
+              response.data = { success: true, data: district };
+            } else {
+              response.data = { success: false };
             }
+          } else {
+            response.data = { success: false };
           }
+        } catch (error) {
+          logger.error(`Error fetching district ${code}:`, error.message);
+          response = { data: { success: false } };
         }
       } else if (code.length === 10) {
         
@@ -113,8 +112,33 @@ class RegionService {
       }
 
       if (response && response.data && response.data.success) {
-        logger.info(`Region data retrieved: ${response.data.data.name}`);
-        return response.data.data;
+        const regionData = response.data.data;
+        logger.info(`Region data retrieved: ${regionData.name}`);
+        
+        if (code.length === 10) {
+          try {
+            const districtCode = code.substring(0, 6);
+            const regencyCode = code.substring(0, 4);
+            const provinceCode = code.substring(0, 2);
+            
+            const district = await this.getDistrict(districtCode);
+            const regency = await this.getRegency(regencyCode);
+            const province = await this.getProvince(provinceCode);
+            
+            regionData.district_name = district?.name || 'Tidak diketahui';
+            regionData.regency_name = regency?.name || 'Tidak diketahui';
+            regionData.province_name = province?.name || 'Tidak diketahui';
+            
+            logger.info(`Village hierarchy completed: ${regionData.name}, ${regionData.district_name}, ${regionData.regency_name}, ${regionData.province_name}`);
+          } catch (error) {
+            logger.warn(`Failed to fetch parent regions for village ${code}:`, error.message);
+            regionData.district_name = 'Tidak diketahui';
+            regionData.regency_name = 'Tidak diketahui';
+            regionData.province_name = 'Tidak diketahui';
+          }
+        }
+        
+        return regionData;
       }
 
       return null;

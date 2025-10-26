@@ -8,7 +8,7 @@ const TextCleaner = require('../utils/textCleaner');
 class GeminiOcrService {
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY;
-    this.model = process.env.GEMINI_MODEL || 'gemini-1.5-flash-latest';
+    this.model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
     this.maxRetries = parseInt(process.env.OCR_MAX_RETRIES) || 2;
     this.timeout = parseInt(process.env.OCR_TIMEOUT) || 30000;
     this.tempDir = process.env.TEMP_DIR || './temp';
@@ -60,21 +60,32 @@ class GeminiOcrService {
           }
         };
 
-        
+
         const prompt = this.createPrompt();
 
-        
-        logger.info('Calling Gemini API...');
-        const result = await this.generativeModel.generateContent([prompt, imagePart]);
+
+        logger.info('Calling Gemini API with timeout...');
+
+        const apiCall = this.generativeModel.generateContent([prompt, imagePart]);
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error(`Gemini API timeout after ${this.timeout}ms`)), this.timeout);
+        });
+
+        const result = await Promise.race([apiCall, timeoutPromise]);
         const response = await result.response;
         const text = response.text();
 
         logger.info('Gemini API response received');
         logger.info(`Raw response length: ${text.length} characters`);
 
-        
+
         if (optimizedPath !== imagePath) {
-          await fs.unlink(optimizedPath).catch(() => {});
+          try {
+            await fs.unlink(optimizedPath);
+            logger.info(`Cleaned up optimized image: ${optimizedPath}`);
+          } catch (cleanupError) {
+            logger.warn(`Failed to cleanup optimized image ${optimizedPath}:`, cleanupError.message);
+          }
         }
 
         
@@ -85,18 +96,22 @@ class GeminiOcrService {
           throw new Error('Parsed data validation failed');
         }
 
-        
+
         const cleanedData = await this.postProcessData(parsedData);
+
+
+        const confidence = this.calculateConfidence(cleanedData);
 
         const processingTime = Date.now() - startTime;
 
         logger.info(`Gemini OCR completed successfully`);
         logger.info(`- Members found: ${cleanedData.table.length}`);
+        logger.info(`- Confidence: ${confidence}%`);
         logger.info(`- Processing time: ${processingTime}ms`);
 
         return {
           success: true,
-          confidence: 95, 
+          confidence: confidence,
           parsedData: cleanedData,
           processingTime,
           memberCount: cleanedData.table.length
@@ -407,6 +422,91 @@ BEGIN EXTRACTION:`;
     }
 
     return result;
+  }
+
+  calculateConfidence(data) {
+    logger.info('Calculating OCR confidence score...');
+
+    let totalScore = 0;
+    let maxScore = 0;
+
+
+    maxScore += 10;
+    if (data.nomor_kk && /^\d{16}$/.test(data.nomor_kk)) {
+      totalScore += 10;
+    } else if (data.nomor_kk) {
+      totalScore += 5;
+    }
+
+
+    const requiredFields = ['nama_kepala_keluarga', 'alamat', 'desa_kelurahan', 'kecamatan', 'kabupaten_kota', 'provinsi'];
+    requiredFields.forEach(field => {
+      maxScore += 3;
+      if (data[field] && data[field].length > 0) {
+        totalScore += 3;
+      } else if (data[field]) {
+        totalScore += 1;
+      }
+    });
+
+
+    maxScore += 5;
+    if (data.rt_rw && /^\d{3}\/\d{3}$/.test(data.rt_rw)) {
+      totalScore += 5;
+    } else if (data.rt_rw) {
+      totalScore += 2;
+    }
+
+
+    if (data.table && Array.isArray(data.table) && data.table.length > 0) {
+      data.table.forEach(member => {
+
+        maxScore += 10;
+        if (member.nik && /^\d{16}$/.test(member.nik)) {
+          totalScore += 10;
+        } else if (member.nik) {
+          totalScore += 4;
+        }
+
+
+        maxScore += 3;
+        if (member.nama_lengkap && member.nama_lengkap.length >= 2) {
+          totalScore += 3;
+        } else if (member.nama_lengkap) {
+          totalScore += 1;
+        }
+
+
+        maxScore += 2;
+        if (['LAKI-LAKI', 'PEREMPUAN'].includes(member.jenis_kelamin)) {
+          totalScore += 2;
+        }
+
+
+        maxScore += 2;
+        if (member.tanggal_lahir && /^\d{2}-\d{2}-\d{4}$/.test(member.tanggal_lahir)) {
+          totalScore += 2;
+        } else if (member.tanggal_lahir) {
+          totalScore += 1;
+        }
+
+
+        const optionalFields = ['tempat_lahir', 'agama', 'pendidikan', 'jenis_pekerjaan', 'status_perkawinan', 'status_hubungan_dalam_keluarga'];
+        optionalFields.forEach(field => {
+          maxScore += 1;
+          if (member[field] && member[field].length > 0) {
+            totalScore += 1;
+          }
+        });
+      });
+    }
+
+
+    const confidencePercentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+
+    logger.info(`Confidence calculation: ${totalScore}/${maxScore} = ${confidencePercentage}%`);
+
+    return confidencePercentage;
   }
 
   getStats() {

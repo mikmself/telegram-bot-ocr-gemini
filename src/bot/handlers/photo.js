@@ -7,6 +7,27 @@ const AutoCreateService = require('../../services/AutoCreateService');
 const { normalizeNIK } = require('../../utils/textCleaner');
 const config = require('../../config/env');
 
+
+const photoUploadTracker = new Map();
+const RATE_LIMIT_WINDOW = 60 * 60 * 1000;
+const MAX_PHOTOS_PER_HOUR = 10;
+
+
+function cleanupRateLimitTracker() {
+  const now = Date.now();
+  for (const [chatId, timestamps] of photoUploadTracker.entries()) {
+    const validTimestamps = timestamps.filter(ts => now - ts < RATE_LIMIT_WINDOW);
+    if (validTimestamps.length === 0) {
+      photoUploadTracker.delete(chatId);
+    } else {
+      photoUploadTracker.set(chatId, validTimestamps);
+    }
+  }
+}
+
+
+setInterval(cleanupRateLimitTracker, 10 * 60 * 1000);
+
 module.exports = async (bot, msg) => {
   const chatId = msg.chat.id;
   const messageId = msg.message_id;
@@ -17,13 +38,13 @@ module.exports = async (bot, msg) => {
     const isLoggedIn = AuthService.isLoggedIn(chatId);
 
     if (!isLoggedIn) {
-      await bot.sendMessage(chatId, 
+      await bot.sendMessage(chatId,
         'Akses ditolak. Anda harus melakukan login terlebih dahulu.\n\n' +
         'Untuk memproses foto Kartu Keluarga (KK), silakan login menggunakan perintah:\n' +
-        '/login <username> <password>\n\n' +
+        '/login username password\n\n' +
         'Contoh penggunaan:\n' +
         '/login admin123 password123\n' +
-        '/login kepala_desa kata_sandi_rahasia'
+        '/login kepala\\_desa kata\\_sandi\\_rahasia'
       );
       return;
     }
@@ -36,7 +57,7 @@ module.exports = async (bot, msg) => {
     }
 
     if (!AuthService.hasVillageCode(chatId)) {
-      await bot.sendMessage(chatId, 
+      await bot.sendMessage(chatId,
         'Kode wilayah belum diatur dalam sistem.\n\n' +
         'Sebelum dapat memproses foto Kartu Keluarga (KK), Anda harus mengatur kode wilayah terlebih dahulu.\n\n' +
         'Gunakan perintah: /kode-wilayah <kode-wilayah>\n' +
@@ -45,6 +66,30 @@ module.exports = async (bot, msg) => {
       );
       return;
     }
+
+
+    const now = Date.now();
+    const userUploads = photoUploadTracker.get(chatId) || [];
+    const recentUploads = userUploads.filter(ts => now - ts < RATE_LIMIT_WINDOW);
+
+    if (recentUploads.length >= MAX_PHOTOS_PER_HOUR) {
+      const oldestUpload = Math.min(...recentUploads);
+      const timeUntilReset = RATE_LIMIT_WINDOW - (now - oldestUpload);
+      const minutesLeft = Math.ceil(timeUntilReset / (60 * 1000));
+
+      await bot.sendMessage(chatId,
+        'Batas upload foto tercapai.\n\n' +
+        `Anda telah mengunggah ${MAX_PHOTOS_PER_HOUR} foto dalam 1 jam terakhir.\n` +
+        `Untuk mencegah penyalahgunaan sistem, terdapat batasan ${MAX_PHOTOS_PER_HOUR} foto per jam.\n\n` +
+        `Silakan tunggu sekitar ${minutesLeft} menit sebelum mengunggah foto berikutnya.\n\n` +
+        'Terima kasih atas pengertian Anda.'
+      );
+      return;
+    }
+
+
+    recentUploads.push(now);
+    photoUploadTracker.set(chatId, recentUploads);
 
     const statusMsg = await bot.sendMessage(
       chatId,
@@ -69,7 +114,7 @@ module.exports = async (bot, msg) => {
 
     const file = await bot.getFile(fileId);
     const filePath = file.file_path;
-    const fileUrl = `https:
+    const fileUrl = `https://api.telegram.org/file/bot${config.telegram.token}/${filePath}`;
 
     const tempDir = config.upload.tempDir;
     await fs.mkdir(tempDir, { recursive: true });
@@ -111,7 +156,12 @@ module.exports = async (bot, msg) => {
         }
       );
 
-      await fs.unlink(fileStream).catch(() => {});
+      try {
+        await fs.unlink(fileStream);
+        logger.info(`Cleaned up temp file after OCR failure: ${fileStream}`);
+      } catch (cleanupError) {
+        logger.warn(`Failed to cleanup temp file ${fileStream}:`, cleanupError.message);
+      }
 
       return;
     }
@@ -140,7 +190,12 @@ module.exports = async (bot, msg) => {
         }
       );
 
-      await fs.unlink(fileStream).catch(() => {});
+      try {
+        await fs.unlink(fileStream);
+        logger.info(`Cleaned up temp file after validation failure: ${fileStream}`);
+      } catch (cleanupError) {
+        logger.warn(`Failed to cleanup temp file ${fileStream}:`, cleanupError.message);
+      }
 
       return;
     }
@@ -194,7 +249,12 @@ module.exports = async (bot, msg) => {
 
     const createResult = await AutoCreateService.autoCreate(data, userInfo.userId);
 
-    await fs.unlink(fileStream).catch(() => {});
+    try {
+      await fs.unlink(fileStream);
+      logger.info(`Cleaned up temp file after processing: ${fileStream}`);
+    } catch (cleanupError) {
+      logger.warn(`Failed to cleanup temp file ${fileStream}:`, cleanupError.message);
+    }
 
     if (createResult.success) {
       logger.info('Auto-create successful:', createResult.data);

@@ -85,12 +85,50 @@ const closePool = async () => {
   }
 };
 
+
+const executeTransaction = async (callback) => {
+  const connection = await getConnection();
+
+  try {
+    await connection.beginTransaction();
+    logger.debug('Transaction started');
+
+    const result = await callback(connection);
+
+    await connection.commit();
+    logger.debug('Transaction committed');
+
+    return result;
+
+  } catch (error) {
+    await connection.rollback();
+    logger.error('Transaction rolled back due to error:', error.message);
+    throw error;
+
+  } finally {
+    connection.release();
+  }
+};
+
+
+const queryInTransaction = async (connection, sql, params = []) => {
+  try {
+    const [results] = await connection.execute(sql, params);
+    return results;
+  } catch (error) {
+    logger.error('Transaction query error:', { sql, error: error.message });
+    throw error;
+  }
+};
+
 module.exports = {
   createPool,
   getConnection,
   query,
   testConnection,
   closePool,
+  executeTransaction,
+  queryInTransaction,
   get pool() {
     return pool;
   }

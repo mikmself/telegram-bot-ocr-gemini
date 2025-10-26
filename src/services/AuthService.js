@@ -179,7 +179,7 @@ class AuthService {
 
     return {
       success: false,
-      message: 'Anda harus login terlebih dahulu.\n\nGunakan perintah:\n/login <username> <password>'
+      message: 'Anda harus login terlebih dahulu.\n\nGunakan perintah:\n/login username password'
     };
   }
 

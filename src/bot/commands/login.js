@@ -14,14 +14,14 @@ const loginCommand = async (bot, msg) => {
     await bot.sendMessage(
       chatId,
       'Format perintah tidak valid.\n\n' +
-      'Format yang benar: /login <username> <password>\n\n' +
+      'Format yang benar: /login username password\n\n' +
       'Penjelasan:\n' +
-      '- <username>: Nama pengguna akun SmartGov Anda\n' +
-      '- <password>: Kata sandi akun SmartGov Anda\n\n' +
+      '- username: Nama pengguna akun SmartGov Anda\n' +
+      '- password: Kata sandi akun SmartGov Anda\n\n' +
       'Contoh penggunaan:\n' +
       '/login admin123 password123\n' +
-      '/login kepala_desa kata_sandi_rahasia\n' +
-      '/login sekretaris_desa sandi123456'
+      '/login kepala\\_desa kata\\_sandi\\_rahasia\n' +
+      '/login sekretaris\\_desa sandi123456'
     );
     return;
   }
@@ -53,9 +53,12 @@ const loginCommand = async (bot, msg) => {
         `Username: ${result.user.username}\n` +
         `Level akses: ${result.user.level}\n\n` +
         `Langkah selanjutnya:\n` +
-        `1. Atur kode wilayah menggunakan perintah: /kode-wilayah <kode-wilayah>\n` +
-        `2. Contoh: /kode-wilayah 33.01.06.2016\n` +
-        `3. Setelah kode wilayah diatur, Anda dapat mengirim foto Kartu Keluarga (KK) untuk diproses\n\n` +
+        `1. Login menggunakan akun SmartGov (Selesai)\n` +
+        `2. Atur kode wilayah menggunakan perintah: /kode-wilayah <kode-wilayah>\n` +
+        `   Contoh: /kode-wilayah 33.01.06.2016\n` +
+        `3. Kirim foto Kartu Keluarga (KK) untuk diproses\n` +
+        `4. Bot akan otomatis extract data menggunakan AI\n` +
+        `5. Data akan disimpan ke database SmartGov\n\n` +
         `Sistem siap digunakan untuk memproses data KK secara otomatis.`,
         {
           chat_id: chatId,
@@ -116,7 +119,35 @@ const logoutCommand = async (bot, msg) => {
   }
 };
 
+const stopCommand = async (bot, msg) => {
+  const chatId = msg.chat.id;
+
+  logger.info(`/stop command from chat ${chatId}`);
+
+  try {
+    const result = await AuthService.logout(chatId);
+
+    if (result.success) {
+      await bot.sendMessage(chatId, 
+        'Bot telah dihentikan.\n\n' +
+        'Sesi Anda telah berakhir dan semua data sementara telah dihapus.\n\n' +
+        'Untuk menggunakan bot kembali, gunakan perintah /start atau /login.'
+      );
+    } else {
+      await bot.sendMessage(chatId, 
+        'Anda belum login.\n\n' +
+        'Gunakan perintah /start untuk memulai.'
+      );
+    }
+
+  } catch (error) {
+    logger.error('Error in stop command:', error);
+    await bot.sendMessage(chatId, 'Terjadi kesalahan sistem saat menghentikan bot.\n\nSilakan coba lagi dalam beberapa saat. Jika masalah berlanjut, hubungi administrator sistem.');
+  }
+};
+
 module.exports = {
   loginCommand,
-  logoutCommand
+  logoutCommand,
+  stopCommand
 };

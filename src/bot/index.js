@@ -3,7 +3,7 @@ const config = require('../config/env');
 const logger = require('../utils/logger');
 
 const startCommand = require('./commands/start');
-const { loginCommand, logoutCommand } = require('./commands/login');
+const { loginCommand, logoutCommand, stopCommand } = require('./commands/login');
 const kodeWilayahCommand = require('./commands/kode_wilayah');
 const { cekSessionCommand, helpCommand } = require('./commands/cek_session');
 
@@ -58,6 +58,10 @@ class TelegramBotService {
       logoutCommand(this.bot, msg);
     });
 
+    this.bot.onText(/\/stop/, (msg) => {
+      stopCommand(this.bot, msg);
+    });
+
     this.bot.onText(/\/kode-wilayah(.*)/, (msg) => {
       kodeWilayahCommand(this.bot, msg);
     });
@@ -104,7 +108,7 @@ class TelegramBotService {
 
       if (msg.text && msg.text.startsWith('/')) {
         const command = msg.text.split(' ')[0];
-        const knownCommands = ['/start', '/login', '/logout', '/kode-wilayah', '/cek-session', '/help'];
+        const knownCommands = ['/start', '/login', '/logout', '/stop', '/kode-wilayah', '/cek-session', '/help'];
 
         if (!knownCommands.includes(command)) {
           this.bot.sendMessage(
@@ -116,6 +120,7 @@ class TelegramBotService {
             '- /start - Menampilkan informasi sistem\n' +
             '- /login - Melakukan autentikasi\n' +
             '- /logout - Keluar dari sistem\n' +
+            '- /stop - Menghentikan bot dan keluar dari sistem\n' +
             '- /cek-session - Memeriksa status sesi\n' +
             '- /kode-wilayah - Mengatur kode wilayah\n' +
             '- /help - Menampilkan panduan lengkap'

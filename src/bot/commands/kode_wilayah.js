@@ -16,10 +16,10 @@ module.exports = async (bot, msg) => {
       chatId,
       'Akses ditolak. Anda harus melakukan login terlebih dahulu.\n\n' +
       'Untuk mengakses fitur kode wilayah, silakan login menggunakan perintah:\n' +
-      '/login <username> <password>\n\n' +
+      '/login username password\n\n' +
       'Contoh:\n' +
       '/login admin123 password123\n' +
-      '/login kepala_desa kata_sandi_rahasia'
+      '/login kepala\\_desa kata\\_sandi\\_rahasia'
     );
     return;
   }
