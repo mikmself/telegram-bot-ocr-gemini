@@ -30,15 +30,9 @@ class AutoCreateService {
 
       // Check if family already exists
       const existingFamily = await FamilyDataModel.findByFamilyCard(familyCardNumber);
-
-      if (existingFamily) {
-        logger.warn(`Family already exists: ${familyCardNumber}`);
-        return {
-          success: false,
-          message: `KK ${familyCardNumber} sudah terdaftar dalam database`,
-          exists: true
-        };
-      }
+      
+      let familyResult;
+      let isNewFamily = false;
 
       // Parse region codes
       const regionCodes = await this.parseRegionCodes(ocrData);
@@ -46,35 +40,54 @@ class AutoCreateService {
       // Extract RT/RW
       const { citizenAssociationCode, communityUnitCode } = this.parseRTRW(ocrData.rt_rw);
 
-      // Create family data
-      const familyData = {
-        family_card_number: familyCardNumber,
-        province_code: regionCodes.province_code,
-        regency_code: regionCodes.regency_code,
-        district_code: regionCodes.district_code,
-        village_code: regionCodes.village_code,
-        hamlet_code: null, // OCR tidak extract hamlet
-        community_unit_code: communityUnitCode,     // RW
-        citizen_association_code: citizenAssociationCode, // RT
-        address: ocrData.alamat || '',
-        postal_code: ocrData.kode_pos || null,
-        total_members: ocrData.table.length,
-        active_members: ocrData.table.length,
-        status: 'active'
-      };
+      // Try to get full codes from Region API
+      const rtRwCodes = await this.parseRTRWFromAPI(
+        regionCodes.village_code, 
+        citizenAssociationCode, 
+        communityUnitCode
+      );
 
-      // Create family record
-      logger.info(`Creating family record: ${familyCardNumber}`);
-      const familyResult = await FamilyDataModel.create(familyData);
+      if (!existingFamily) {
+        // Create new family record
+        isNewFamily = true;
+        const familyData = {
+          family_card_number: familyCardNumber,
+          province_code: regionCodes.province_code,
+          regency_code: regionCodes.regency_code,
+          district_code: regionCodes.district_code,
+          village_code: regionCodes.village_code,
+          hamlet_code: rtRwCodes.hamletCode,
+          community_unit_code: rtRwCodes.rwCode,
+          citizen_association_code: rtRwCodes.rtCode,
+          address: ocrData.alamat || '',
+          postal_code: ocrData.kode_pos || null,
+          total_members: 0, // Will be updated after inserting residents
+          active_members: 0,
+          status: 'active'
+        };
+
+        logger.info(`Creating new family record: ${familyCardNumber}`);
+        familyResult = await FamilyDataModel.create(familyData);
+      } else {
+        logger.info(`Family already exists: ${familyCardNumber}, will check and add new members`);
+        familyResult = { id: existingFamily.id, family_card_number: familyCardNumber };
+      }
 
       // Prepare residents data
       const residentsData = [];
+      const skippedResidents = [];
+      const invalidResidents = [];
 
       for (const member of ocrData.table) {
         const nik = normalizeNIK(member.nik);
 
         if (!nik) {
           logger.warn(`Skipping member with invalid NIK: ${member.nik}`);
+          invalidResidents.push({
+            nama: member.nama_lengkap,
+            nik: member.nik,
+            reason: 'Invalid NIK format'
+          });
           continue;
         }
 
@@ -82,7 +95,12 @@ class AutoCreateService {
         const existingResident = await ResidentModel.findByNIK(nik);
 
         if (existingResident) {
-          logger.warn(`Resident already exists: ${nik}`);
+          logger.warn(`Resident already exists, skipping: ${nik} - ${member.nama_lengkap}`);
+          skippedResidents.push({
+            nik: nik,
+            nama: member.nama_lengkap,
+            reason: 'NIK already exists in database'
+          });
           continue;
         }
 
@@ -91,6 +109,11 @@ class AutoCreateService {
 
         if (!birthDate) {
           logger.warn(`Invalid birth date for ${member.nama_lengkap}: ${member.tanggal_lahir}`);
+          invalidResidents.push({
+            nama: member.nama_lengkap,
+            nik: nik,
+            reason: `Invalid birth date: ${member.tanggal_lahir}`
+          });
           continue;
         }
 
@@ -128,14 +151,14 @@ class AutoCreateService {
           marital_status_id: maritalStatusId,
           citizenship_id: citizenshipId,
           age_category_id: ageCategoryId,
-          blood_type_id: null, // OCR tidak extract blood type
+          blood_type_id: null,
           province_code: regionCodes.province_code,
           regency_code: regionCodes.regency_code,
           district_code: regionCodes.district_code,
           village_code: regionCodes.village_code,
-          hamlet_code: null,
-          community_unit_code: communityUnitCode,     // RW
-          citizen_association_code: citizenAssociationCode, // RT
+          hamlet_code: rtRwCodes.hamletCode,
+          community_unit_code: rtRwCodes.rwCode,
+          citizen_association_code: rtRwCodes.rtCode,
           is_active: 1
         };
 
@@ -143,22 +166,57 @@ class AutoCreateService {
       }
 
       // Create residents
-      logger.info(`Creating ${residentsData.length} resident records...`);
-      const residentsResult = await ResidentModel.bulkCreate(residentsData);
+      let residentsResult = [];
+      if (residentsData.length > 0) {
+        logger.info(`Creating ${residentsData.length} resident records...`);
+        residentsResult = await ResidentModel.bulkCreate(residentsData);
+      } else {
+        logger.warn('No new residents to create');
+      }
 
       // Update member counts in family_data
       await FamilyDataModel.updateMemberCounts(familyCardNumber);
 
       logger.info('Auto-create completed successfully');
 
+      // Build detailed result message
+      const totalFromOCR = ocrData.table.length;
+      const newMembers = residentsResult.length;
+      const skippedMembers = skippedResidents.length;
+      const invalidMembers = invalidResidents.length;
+
+      let resultMessage = '';
+      
+      if (isNewFamily) {
+        resultMessage = `Berhasil membuat KK baru ${familyCardNumber}`;
+      } else {
+        resultMessage = `KK ${familyCardNumber} sudah ada, menambahkan anggota baru`;
+      }
+
+      resultMessage += `\n- Total anggota dari OCR: ${totalFromOCR}`;
+      resultMessage += `\n- Anggota baru ditambahkan: ${newMembers}`;
+      
+      if (skippedMembers > 0) {
+        resultMessage += `\n- Anggota yang sudah ada (skip): ${skippedMembers}`;
+      }
+      
+      if (invalidMembers > 0) {
+        resultMessage += `\n- Anggota tidak valid (skip): ${invalidMembers}`;
+      }
+
       return {
         success: true,
-        message: `Berhasil membuat KK ${familyCardNumber} dengan ${residentsResult.length} anggota keluarga`,
+        message: resultMessage,
+        isNewFamily: isNewFamily,
         data: {
           family: familyResult,
           residents: residentsResult,
-          familyCount: 1,
-          residentCount: residentsResult.length
+          familyCount: isNewFamily ? 1 : 0,
+          residentCount: newMembers,
+          skippedCount: skippedMembers,
+          invalidCount: invalidMembers,
+          skippedResidents: skippedResidents,
+          invalidResidents: invalidResidents
         }
       };
 
@@ -221,6 +279,71 @@ class AutoCreateService {
     }
 
     return { citizenAssociationCode: null, communityUnitCode: null };
+  }
+
+  // Parse RT/RW from Region API
+  static async parseRTRWFromAPI(villageCode, rtFromOCR, rwFromOCR) {
+    try {
+      if (!villageCode) {
+        return { 
+          hamletCode: null, 
+          rwCode: null, 
+          rtCode: null 
+        };
+      }
+      
+      // Format village code: 33.01.06.2016
+      logger.info(`Searching RT/RW for village ${villageCode}, RT=${rtFromOCR}, RW=${rwFromOCR}`);
+      
+      // Try to get hamlets for this village
+      const hamlets = await RegionService.client.get(`/hamlets/by-village/${villageCode}`);
+      
+      if (hamlets.data && hamlets.data.data && hamlets.data.data.length > 0) {
+        // For now, just use the first hamlet if available
+        const hamlet = hamlets.data.data[0];
+        logger.info(`Hamlet found: ${hamlet.name} (${hamlet.code})`);
+        
+        // Try to get RW for this hamlet
+        const rws = await RegionService.client.get(`/rw/by-hamlet/${hamlet.code}`);
+        
+        if (rws.data && rws.data.data && rws.data.data.length > 0) {
+          // Find matching RW by name
+          const rw = rws.data.data.find(r => r.name === rwFromOCR) || rws.data.data[0];
+          logger.info(`RW found: ${rw.name} (${rw.code})`);
+          
+          // Try to get RT for this RW
+          const rts = await RegionService.client.get(`/rt/by-rw/${rw.code}`);
+          
+          if (rts.data && rts.data.data && rts.data.data.length > 0) {
+            // Find matching RT by name
+            const rt = rts.data.data.find(r => r.name === rtFromOCR) || rts.data.data[0];
+            logger.info(`RT found: ${rt.name} (${rt.code})`);
+            
+            return {
+              hamletCode: hamlet.code,
+              rwCode: rw.code,
+              rtCode: rt.code
+            };
+          }
+        }
+      }
+      
+      // Fallback to OCR values if API search fails
+      logger.warn('Could not find RT/RW in Region API, using OCR values');
+      return { 
+        hamletCode: null, 
+        rwCode: rwFromOCR, 
+        rtCode: rtFromOCR 
+      };
+      
+    } catch (error) {
+      logger.error('Error parsing RT/RW from API:', error);
+      return { 
+        hamletCode: null, 
+        rwCode: rwFromOCR, 
+        rtCode: rtFromOCR 
+      };
+    }
   }
 
   // Calculate age from birth date

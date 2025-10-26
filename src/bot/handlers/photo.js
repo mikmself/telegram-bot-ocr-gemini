@@ -4,6 +4,7 @@ const logger = require('../../utils/logger');
 const AuthService = require('../../services/AuthService');
 const GeminiOcrService = require('../../services/GeminiOcrService');
 const AutoCreateService = require('../../services/AutoCreateService');
+const { normalizeNIK } = require('../../utils/textCleaner');
 const config = require('../../config/env');
 
 module.exports = async (bot, msg) => {
@@ -198,9 +199,80 @@ module.exports = async (bot, msg) => {
       let successMessage = '✅ *Data berhasil disimpan!*\n\n';
       successMessage += `*Nomor KK:* \`${data.nomor_kk}\`\n`;
       successMessage += `*Kepala Keluarga:* ${data.nama_kepala_keluarga}\n`;
-      successMessage += `*Jumlah Anggota:* ${createResult.data.residentCount} orang\n\n`;
-      successMessage += `*Waktu Proses:* ${Math.round(ocrResult.processingTime / 1000)} detik\n`;
-      successMessage += `*Akurasi:* ${ocrResult.confidence}%\n\n`;
+      successMessage += `*Alamat:* ${data.alamat}\n`;
+      
+      if (data.rt_rw) {
+        successMessage += `*RT/RW:* ${data.rt_rw}\n`;
+      }
+      
+      successMessage += `*Desa:* ${data.desa_kelurahan}\n`;
+      successMessage += `*Kecamatan:* ${data.kecamatan}\n`;
+      successMessage += `*Kabupaten:* ${data.kabupaten_kota}\n`;
+      successMessage += `*Provinsi:* ${data.provinsi}\n\n`;
+      
+      // Summary
+      if (createResult.isNewFamily) {
+        successMessage += `🆕 *KK Baru*\n`;
+      } else {
+        successMessage += `📝 *KK Sudah Ada - Update Anggota*\n`;
+      }
+      
+      successMessage += `*Total Anggota dari OCR:* ${data.table.length} orang\n`;
+      successMessage += `*Anggota Baru Ditambahkan:* ${createResult.data.residentCount} orang\n`;
+      
+      if (createResult.data.skippedCount > 0) {
+        successMessage += `*Anggota Sudah Ada (Skip):* ${createResult.data.skippedCount} orang\n`;
+      }
+      
+      if (createResult.data.invalidCount > 0) {
+        successMessage += `*Anggota Tidak Valid (Skip):* ${createResult.data.invalidCount} orang\n`;
+      }
+      
+      successMessage += `\n`;
+      
+      // Display all members with details
+      successMessage += `*📋 Detail Anggota Keluarga:*\n\n`;
+      
+      data.table.forEach((member, index) => {
+        // Check if this member was skipped or invalid
+        const wasSkipped = createResult.data.skippedResidents.find(s => s.nik === normalizeNIK(member.nik));
+        const wasInvalid = createResult.data.invalidResidents.find(i => i.nik === normalizeNIK(member.nik));
+        
+        let status = '✅';
+        if (wasSkipped) {
+          status = '⏭️ (Sudah Ada)';
+        } else if (wasInvalid) {
+          status = '❌ (Tidak Valid)';
+        }
+        
+        successMessage += `${status} *${index + 1}. ${member.nama_lengkap}*\n`;
+        successMessage += `   NIK: \`${member.nik}\`\n`;
+        successMessage += `   Tempat/Tgl Lahir: ${member.tempat_lahir}, ${member.tanggal_lahir}\n`;
+        successMessage += `   Jenis Kelamin: ${member.jenis_kelamin}\n`;
+        successMessage += `   Agama: ${member.agama}\n`;
+        successMessage += `   Pendidikan: ${member.pendidikan}\n`;
+        successMessage += `   Pekerjaan: ${member.jenis_pekerjaan}\n`;
+        successMessage += `   Status Perkawinan: ${member.status_perkawinan}\n`;
+        successMessage += `   Hub. Keluarga: ${member.status_hubungan_dalam_keluarga}\n`;
+        
+        if (wasSkipped) {
+          successMessage += `   ℹ️ Alasan Skip: ${wasSkipped.reason}\n`;
+        } else if (wasInvalid) {
+          successMessage += `   ℹ️ Alasan Invalid: ${wasInvalid.reason}\n`;
+        }
+        
+        if (member.nama_ayah && !wasSkipped && !wasInvalid) {
+          successMessage += `   Nama Ayah: ${member.nama_ayah}\n`;
+        }
+        if (member.nama_ibu && !wasSkipped && !wasInvalid) {
+          successMessage += `   Nama Ibu: ${member.nama_ibu}\n`;
+        }
+        
+        successMessage += `\n`;
+      });
+      
+      successMessage += `\n*⏱ Waktu Proses:* ${Math.round(ocrResult.processingTime / 1000)} detik\n`;
+      successMessage += `*📊 Akurasi:* ${ocrResult.confidence}%\n\n`;
       successMessage += `Diproses oleh: ${userInfo.nama_lengkap}\n`;
       successMessage += `Powered by Google Gemini AI 🤖`;
 

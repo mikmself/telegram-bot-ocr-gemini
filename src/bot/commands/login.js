@@ -46,10 +46,8 @@ const loginCommand = async (bot, msg) => {
 
     if (result.success) {
       await bot.editMessageText(
-        `✅ ${result.message}\n\n` +
-        `Username: ${result.user.username}\n` +
-        `Level: ${result.user.level || 'Tidak ada'}\n\n` +
-        `Sekarang Anda dapat mengirim foto Kartu Keluarga (KK) untuk diproses.`,
+        `✅ Selamat datang, Superadmin Aplikasi!\n\n` +
+        `Silahkan set /kode-wilayah <kode-wilayah> terlebih dahulu agar bisa segera memprosed data kk`,
         {
           chat_id: chatId,
           message_id: processingMsg.message_id
