@@ -431,6 +431,7 @@ class ResidentModel {
           name,
           birth_place,
           birth_date,
+          marriage_date,
           gender,
           age,
           family_card_number,
@@ -456,7 +457,7 @@ class ResidentModel {
           is_active,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
       `;
 
       // Array parameters dengan NULL handling untuk optional fields
@@ -466,6 +467,7 @@ class ResidentModel {
         residentData.name, // Required
         residentData.birth_place || null, // Optional - NULL jika falsy
         residentData.birth_date || null, // Optional
+        residentData.marriage_date || null, // Optional
         residentData.gender, // Required
         residentData.age || null, // Optional
         residentData.family_card_number, // Required - FK ke family_data
@@ -636,6 +638,7 @@ class ResidentModel {
           name = ?,
           birth_place = ?,
           birth_date = ?,
+          marriage_date = ?,
           gender = ?,
           age = ?,
           family_card_number = ?,
@@ -668,6 +671,7 @@ class ResidentModel {
         residentData.name, // Required
         residentData.birth_place || null, // Optional
         residentData.birth_date || null, // Optional
+        residentData.marriage_date || null, // Optional
         residentData.gender, // Required
         residentData.age || null, // Optional
         residentData.family_card_number, // Required FK
@@ -1206,6 +1210,7 @@ class ResidentModel {
             name,
             birth_place,
             birth_date,
+            marriage_date,
             gender,
             age,
             family_card_number,
@@ -1231,7 +1236,7 @@ class ResidentModel {
             is_active,
             created_at,
             updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
         `;
 
         const params = [
@@ -1239,6 +1244,7 @@ class ResidentModel {
           resident.name,
           resident.birth_place || null,
           resident.birth_date || null,
+          resident.marriage_date || null,
           resident.gender,
           resident.age || null,
           resident.family_card_number,

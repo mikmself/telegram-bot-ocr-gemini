@@ -326,7 +326,7 @@ class AutoCreateService {
           continue;
         }
 
-        
+
         const birthDate = dateParser.toMySQLDate(member.tanggal_lahir);
 
         if (!birthDate) {
@@ -339,7 +339,10 @@ class AutoCreateService {
           continue;
         }
 
-        
+
+        const marriageDate = member.tanggal_perkawinan ? dateParser.toMySQLDate(member.tanggal_perkawinan) : null;
+
+
         const age = this.calculateAge(birthDate);
 
         
@@ -359,6 +362,7 @@ class AutoCreateService {
           name: member.nama_lengkap,
           birth_place: member.tempat_lahir || null,
           birth_date: birthDate,
+          marriage_date: marriageDate,
           gender: gender,
           age: age,
           family_card_number: familyCardNumber,

@@ -495,9 +495,10 @@ CRITICAL INSTRUCTIONS:
 4. For EACH member, extract ALL fields accurately
 5. Pay special attention to NIK (16 digits) - this is the most important field
 6. Preserve exact names, do not translate or modify
-7. Extract dates in DD-MM-YYYY format
+7. Extract dates in DD-MM-YYYY format (birth date AND marriage date if available)
 8. For gender: use "LAKI-LAKI" or "PEREMPUAN" exactly
 9. For family relationship, use exact Indonesian terms like "KEPALA KELUARGA", "ISTRI", "ANAK", etc.
+10. Extract "Tanggal Perkawinan" (marriage date) from the table - use empty string if not available or not married
 
 IMPORTANT FIELD MAPPINGS:
 - Jenis Kelamin: must be "LAKI-LAKI" or "PEREMPUAN" (NOT "L" or "P")
@@ -527,6 +528,7 @@ DATA STRUCTURE TO EXTRACT:
       "pendidikan": "string - education level",
       "jenis_pekerjaan": "string - occupation",
       "status_perkawinan": "string - marital status",
+      "tanggal_perkawinan": "string - marriage date in DD-MM-YYYY format (empty string if not married or not available)",
       "status_hubungan_dalam_keluarga": "string - family relationship",
       "kewarganegaraan": "string - citizenship (WNI or WNA)",
       "nama_ayah": "string - father's name (empty string if not available)",
