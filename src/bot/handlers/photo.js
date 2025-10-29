@@ -25,7 +25,7 @@
  * 1. Authentication & Authorization
  *    - Validasi user login status
  *    - Cek village code requirement
- *    - Rate limiting (10 foto per jam per user)
+ *    - Rate limiting (DINONAKTIFKAN)
  *
  * 2. Photo Processing Pipeline
  *    - Download foto dari Telegram server
@@ -46,7 +46,7 @@
  *    - Success/failure feedback
  *
  * 5. Security & Performance
- *    - Rate limiting untuk prevent abuse
+ *    - Rate limiting (DINONAKTIFKAN)
  *    - File cleanup otomatis
  *    - Error logging untuk monitoring
  *    - Memory management
@@ -62,7 +62,7 @@
  *
  * CATATAN PENTING:
  * - User harus login dan set village code sebelum upload foto
- * - Rate limit: 10 foto per jam per chat ID
+ * - Rate limit: DINONAKTIFKAN (tidak ada batasan upload)
  * - File temporary akan di-cleanup otomatis
  * - OCR processing membutuhkan 5-15 detik
  * - Data akan disimpan ke database jika valid
@@ -267,13 +267,16 @@ module.exports = async (bot, msg) => {
     }
 
     // ========================================================================
-    // STEP 2: RATE LIMITING VALIDATION
+    // STEP 2: RATE LIMITING VALIDATION (DISABLED)
     // ========================================================================
-    
+
     /**
-     * Implementasi rate limiting untuk mencegah abuse
-     * Maksimal 10 foto per jam per user (chat ID)
+     * Rate limiting dinonaktifkan - tidak ada batasan upload foto
+     * Implementasi sebelumnya: Maksimal 10 foto per jam per user (chat ID)
      */
+
+    // DISABLED: Rate limiting logic
+    /*
     const now = Date.now();
     const userUploads = photoUploadTracker.get(chatId) || [];
     const recentUploads = userUploads.filter(ts => now - ts < RATE_LIMIT_WINDOW);
@@ -293,12 +296,9 @@ module.exports = async (bot, msg) => {
       return;
     }
 
-    /**
-     * Update rate limiting tracker
-     * Tambahkan timestamp upload saat ini ke tracking
-     */
     recentUploads.push(now);
     photoUploadTracker.set(chatId, recentUploads);
+    */
 
     // ========================================================================
     // STEP 3: PHOTO DOWNLOAD & PREPARATION
@@ -719,10 +719,9 @@ module.exports = async (bot, msg) => {
  *
  * RATE LIMITING STRATEGY:
  * -----------------------
- * - 10 foto per jam per user (chat ID)
- * - Sliding window dengan cleanup setiap 10 menit
- * - Memory-efficient dengan Map storage
- * - Graceful degradation saat limit exceeded
+ * - DINONAKTIFKAN - Tidak ada batasan upload foto
+ * - Kode rate limiting dipertahankan dalam bentuk comment
+ * - Dapat diaktifkan kembali jika diperlukan
  *
  * ERROR HANDLING PATTERNS:
  * ------------------------
