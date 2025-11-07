@@ -1,0 +1,252 @@
+STATUS DOWNLOAD JURNAL - VERIFIKASI
+================================================================================
+
+KATEGORI 1: OCR & COMPUTER VISION (9 jurnal)
+================================================================================
+
+✅ [1] Li, M., et al. (2023). TrOCR: Transformer-based Optical Character Recognition...
+File: "TRANSFORMERS FOR IMAGE RECOGNITION AT SCALE with Pre-trained Models.pdf"
+URL OK: https://ojs.aaai.org/index.php/AAAI/article/view/26538
+
+✅ [2] Dosovitskiy, A., et al. (2021). An Image is Worth 16x16 Words...
+File: "AN IMAGE IS WORTH 16X16 WORDS TRANSFORMERS FOR IMAGE RECOGNITION AT SCALE.pdf"
+URL OK: https://arxiv.org/abs/2010.11929
+
+✅ [3] Baek, Y., et al. (2019). Character Region Awareness for Text Detection.
+File: "Character Region Awareness for Text Detection.pdf"
+URL OK: https://arxiv.org/abs/1904.01941
+
+✅ [4] Diaz, D. H., et al. (2021). Rethinking Text Line Recognition Models.
+File: "Rethinking Text Line Recognition Models.pdf"
+URL OK: https://arxiv.org/abs/2104.07787
+
+✅ [5] Liu, Z., et al. (2021). Swin Transformer...
+File: "Swin Transformer Hierarchical Vision Transformer using Shifted Windows.pdf"
+URL OK: https://arxiv.org/abs/2103.14030
+
+✅ [6] Biten, A. F., et al. (2019). Scene Text Visual Question Answering.
+File: "Scene Text Visual Question Answering.pdf"
+URL OK: https://arxiv.org/abs/1905.13648
+
+✅ [7] Long, S., He, X., & Yao, C. (2021). Scene Text Detection and Recognition: The Deep Learning Era.
+File: "Scene Text Detection and Recognition The Deep Learning Era.pdf"
+URL OK: https://link.springer.com/article/10.1007/s11263-020-01369-0
+
+✅ [8] Litman, R., et al. (2020). SCATTER: Selective Context Attentional Scene Text Recognizer.
+File: "SCATTER Selective Context Attentional Scene Text Recognizer.pdf"
+URL OK: https://arxiv.org/abs/2003.11288
+
+✅ [9] Busta, M., et al. (2019). E2E-MLT...
+File: "E2E-MLT - an Unconstrained End-to-End Method for Multi-Language Scene Text.pdf"
+URL OK: https://arxiv.org/abs/1801.09919
+
+
+================================================================================
+KATEGORI 2: DOCUMENT UNDERSTANDING & INFORMATION EXTRACTION (7 jurnal)
+================================================================================
+
+✅ [10] Xu, Y., et al. (2021). LayoutLMv2...
+File: "LayoutLMv2 Multi-modal Pre-training for Visually-rich Document Understanding.pdf"
+URL OK: https://arxiv.org/abs/2012.14740
+
+✅ [11] Huang, Y., et al. (2022). LayoutLMv3...
+File: "LayoutLMv3 Pre-training for Document AI with Unified Text and Image Masking.pdf"
+URL OK: https://arxiv.org/abs/2204.08387
+
+✅ [12] Appalaraju, S., et al. (2021). DocFormer...
+File: "DocFormer End-to-End Transformer for Document Understanding.pdf"
+URL OK: https://arxiv.org/abs/2106.11539
+
+✅ [13] Garncarek, L., et al. (2021). LAMBERT...
+File: "LAMBERT Layout-Aware Language Modeling for Information Extraction.pdf"
+URL OK: https://arxiv.org/abs/2002.08087
+
+✅ [14] Xu, Y., et al. (2020). LayoutLM...
+File: "LayoutLM Pre-training of Text and Layout for Document Image Understanding.pdf"
+URL OK: https://arxiv.org/abs/1912.13318
+
+❌ [15] Park, S., et al. (2019). CORD: A Consolidated Receipt Dataset...
+TIDAK ADA FILE!
+URL yang dicoba: https://arxiv.org/abs/1904.09762
+LINK ALTERNATIF: https://arxiv.org/pdf/1904.09762.pdf (direct PDF)
+atau https://openreview.net/pdf?id=SJl3z659UH
+
+✅ [16] Jaume, G., et al. (2019). FUNSD: A Dataset for Form Understanding...
+File: "FUNSD A Dataset for Form Understanding in Noisy Scanned Documents.pdf"
+URL OK: https://arxiv.org/abs/1905.13538
+
+
+================================================================================
+KATEGORI 3: CHATBOT & CONVERSATIONAL AI (5 jurnal)
+================================================================================
+
+✅ [17] Zhang, Y., et al. (2020). DIALOGPT...
+File: "DIALOGPT Large-Scale Generative Pre-training for Conversational Response Generation.pdf"
+URL OK: https://arxiv.org/abs/1911.00536
+
+✅ [18] Ni, J., et al. (2021). Recent Advances in Deep Learning Based Dialogue Systems...
+File: "Recent Advances in Deep Learning Based Dialogue Systems A Systematic Survey.pdf"
+URL OK: https://link.springer.com/article/10.1007/s10462-022-10248-8
+
+❌ [19] Adamopoulou, E., & Moussiades, L. (2020). An Overview of Chatbot Technology.
+TIDAK ADA FILE!
+URL yang dicoba: https://link.springer.com/chapter/10.1007/978-3-030-49186-4_31
+LINK ALTERNATIF: https://link.springer.com/content/pdf/10.1007/978-3-030-49186-4_31.pdf (direct PDF)
+atau cari di: https://www.researchgate.net/publication/341768110
+
+✅ [20] Chen, H., et al. (2017). A Survey on Dialogue Systems...
+File: "A Survey on Dialogue Systems Recent Advances and New Frontiers.pdf"
+URL OK: https://arxiv.org/abs/1711.01731
+
+✅ [21] Serban, I. V., et al. (2017). A Deep Reinforcement Learning Chatbot.
+File: "A Deep Reinforcement Learning Chatbot.pdf"
+URL OK: https://arxiv.org/abs/1709.02349
+
+
+================================================================================
+KATEGORI 4: MICROSERVICES & REST API (5 jurnal)
+================================================================================
+
+❌ [22] Newman, S. (2021). Building Microservices (2nd Edition). O'Reilly Media.
+TIDAK ADA FILE (ini textbook, bukan jurnal - wajar tidak bisa didownload gratis)
+ALTERNATIF: Ganti dengan jurnal ini:
+  Taibi, D., Lenarduzzi, V., & Pahl, C. (2020). "Microservices Anti-patterns: A Taxonomy".
+  Microservices, 111-128. Springer.
+  URL: https://link.springer.com/chapter/10.1007/978-3-030-31646-4_5
+
+✅ [23] Dragoni, N., et al. (2017). Microservices: Yesterday, Today, and Tomorrow.
+File: "Microservices yesterday, today, and tomorrow.pdf"
+URL OK: https://arxiv.org/abs/1606.04036
+
+✅ [24] Jamshidi, P., et al. (2018). Microservices: The Journey So Far and Challenges Ahead.
+File: "Microservices The Journey So Far and Challenges Ahead.pdf"
+URL OK: https://ieeexplore.ieee.org/document/8354433
+
+✅ [25] Taibi, D., et al. (2018). Architectural Patterns for Microservices...
+File: "Architectural Patterns for Microservices A Systematic Mapping Study.pdf"
+URL OK: https://www.scitepress.org/Papers/2018/67125/67125.pdf
+
+❌ [26] Waseem, M., et al. (2020). A Systematic Mapping Study on Microservices Architecture in DevOps.
+TIDAK ADA FILE!
+URL yang dicoba: https://www.sciencedirect.com/science/article/abs/pii/S0164121220301734
+MASALAH: Ini artikel ScienceDirect yang berbayar (paywall)
+LINK ALTERNATIF: https://arxiv.org/abs/2008.04370 (versi preprint gratis)
+atau https://www.researchgate.net/publication/344177642
+
+
+================================================================================
+KATEGORI 5: PERFORMANCE EVALUATION & METRICS (3 jurnal)
+================================================================================
+
+✅ [27] Rice, S. V., et al. (1995). The Fifth Annual Test of OCR Accuracy.
+File: "The Fifth Annual Test of OCR Accuracy.pdf"
+URL: Technical Report (OK)
+
+❌ [28] Mathias, M., et al. (2013). A Comparative Evaluation of Text Detection Algorithms.
+TIDAK ADA FILE!
+URL yang dicoba: http://www.bmva.org/bmvc/2013/Papers/paper0097/paper0097.pdf
+LINK ALTERNATIF: https://www.cv-foundation.org/openaccess/content_iccv_2013/papers/Mathias_A_Comparative_Evaluation_2013_ICCV_paper.pdf
+atau https://www.vision.ee.ethz.ch/~timofter/publications/Mathias-BMVC-2013.pdf
+
+✅ [29] Karatzas, D., et al. (2015). ICDAR 2015 Competition on Robust Reading.
+File: "ICDAR 2015 Competition on Robust Reading.pdf"
+URL OK: https://ieeexplore.ieee.org/document/7333942
+
+
+================================================================================
+KATEGORI 6: E-GOVERNMENT & DIGITAL TRANSFORMATION (4 jurnal)
+================================================================================
+
+✅ [30] Wirtz, B. W., & Müller, W. M. (2019). An Integrated Artificial Intelligence Framework for Public Management.
+File: "An integrated artificial intelligence framework for public management.pdf"
+URL OK: https://www.tandfonline.com/doi/abs/10.1080/14719037.2018.1549268
+
+✅ [31] Dwivedi, Y. K., et al. (2017). An Empirical Validation of a Unified Model of Electronic Government Adoption.
+File: "An empirical validation of a unified model of electronic government adoption (UMEGA).pdf"
+URL OK: https://www.sciencedirect.com/science/article/abs/pii/S0740624X17300928
+
+✅ [32] Janssen, M., & van der Voort, H. (2020). Agile and Adaptive Governance in Crisis Response.
+File: "Agile and adaptive governance in crisis response Lessons from the COVID19 pandemic.pdf"
+URL OK: https://www.sciencedirect.com/science/article/pii/S0268401220308082
+
+❌ [33] Wirtz, B. W., Weyerer, J. C., & Geyer, C. (2019). Artificial Intelligence and the Public Sector...
+TIDAK ADA FILE!
+URL yang dicoba: https://www.tandfonline.com/doi/abs/10.1080/01900692.2018.1498103
+LINK ALTERNATIF: https://www.tandfonline.com/doi/pdf/10.1080/01900692.2018.1498103 (direct PDF)
+atau https://www.researchgate.net/publication/326025963
+
+
+================================================================================
+KATEGORI 7: DOCKER & CONTAINERIZATION (3 jurnal)
+================================================================================
+
+✅ [34] Pahl, C., et al. (2019). Cloud Container Technologies...
+File: "Cloud Container Technologies A State-of-the-Art Review.pdf"
+URL OK: https://ieeexplore.ieee.org/document/8064985
+
+✅ [35] Zheng, C., et al. (2019). Deploying High Throughput Scientific Workflows...
+File: "Deploying High Throughput Scientific Workflows on Container Schedulers with Makeflow and Mesos.pdf"
+URL OK: https://ieeexplore.ieee.org/document/7973692
+
+✅ [36] Merkel, D. (2014). Docker: Lightweight Linux Containers...
+File: "Docker Lightweight Linux Containers for Consistent Development and Deployment.pdf"
+URL OK: https://www.linuxjournal.com/content/docker-lightweight-linux-containers-consistent-development-and-deployment
+
+
+================================================================================
+RINGKASAN STATUS DOWNLOAD
+================================================================================
+
+✅ BERHASIL DOWNLOAD: 30 jurnal
+❌ GAGAL/TIDAK ADA: 6 jurnal
+
+YANG GAGAL:
+1. [15] CORD Dataset - arXiv link mungkin butuh direct PDF
+2. [19] Adamopoulou Chatbot Overview - Springer paywall
+3. [22] Newman Building Microservices - Textbook (bukan open access)
+4. [26] Waseem Microservices DevOps - ScienceDirect paywall
+5. [28] Mathias Text Detection - BMVC link mungkin broken
+6. [33] Wirtz AI Public Sector - Taylor & Francis paywall
+
+FILE ANEH YANG TIDAK TERMASUK DAFTAR:
+- "CHANDRA, MDM, SWIFT, AND NUSTAR..." - ini jurnal astronomi, BUKAN dari list kita!
+- "Some SonarQube issues..." - ini jurnal software engineering lain, BUKAN dari list kita!
+
+
+================================================================================
+REKOMENDASI PERBAIKAN LINK
+================================================================================
+
+UNTUK [15] CORD Dataset:
+Ganti URL dari: https://arxiv.org/abs/1904.09762
+Ke: https://arxiv.org/pdf/1904.09762.pdf
+
+UNTUK [19] Adamopoulou Chatbot:
+Ganti URL dari: https://link.springer.com/chapter/10.1007/978-3-030-49186-4_31
+Ke: https://www.researchgate.net/publication/341768110_An_Overview_of_Chatbot_Technology
+
+UNTUK [22] Newman (Textbook):
+HAPUS dari daftar atau ganti dengan jurnal peer-reviewed:
+"Alshuqayran, N., Ali, N., & Evans, R. (2016). A Systematic Mapping Study in Microservice Architecture.
+IEEE 9th International Conference on Service-Oriented Computing and Applications (SOCA), 44-51."
+URL: https://ieeexplore.ieee.org/document/7796008
+
+UNTUK [26] Waseem Microservices:
+Ganti URL dari: https://www.sciencedirect.com/science/article/abs/pii/S0164121220301734
+Ke: https://arxiv.org/abs/2008.04370 (preprint gratis)
+
+UNTUK [28] Mathias Text Detection:
+Ganti URL dari: http://www.bmva.org/bmvc/2013/Papers/paper0097/paper0097.pdf
+Ke: https://www.vision.ee.ethz.ch/~timofter/publications/Mathias-BMVC-2013.pdf
+
+UNTUK [33] Wirtz AI Public Sector:
+Ganti URL dari: https://www.tandfonline.com/doi/abs/10.1080/01900692.2018.1498103
+Ke: https://www.researchgate.net/publication/326025963_Artificial_Intelligence_and_the_Public_Sector-Applications_and_Challenges
+
+
+================================================================================
+CATATAN PENTING:
+- 2 file download yang BUKAN dari list jurnal kita (kemungkinan download error)
+- Beberapa link adalah paywall (butuh akses institutional)
+- Untuk yang paywall, gunakan ResearchGate atau preprint versions
+================================================================================
