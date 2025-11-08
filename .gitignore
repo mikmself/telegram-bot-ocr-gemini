@@ -1,5 +1,6 @@
 .claude
 /data
+/skripsi
 # Dependencies
 node_modules/
 package-lock.json
